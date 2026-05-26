@@ -96,11 +96,47 @@
     .chip-danger { border-color: rgba(248,81,73,0.4); color: var(--danger); }
     .chip-danger:hover { background: rgba(248,81,73,0.1); }
 
+    /* ── LOADING OVERLAY ── */
+    #loadingOverlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(13,17,23,0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      gap: 14px;
+    }
+    #loadingOverlay.hidden { display: none; }
+    .spinner {
+      width: 32px; height: 32px;
+      border: 2px solid var(--border2);
+      border-top-color: var(--accent2);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      color: var(--text3);
+    }
+    .error-msg {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      color: var(--danger);
+      text-align: center;
+      max-width: 340px;
+      line-height: 1.6;
+    }
+
     /* ── MAIN LAYOUT ── */
     .main {
       display: flex;
       flex: 1;
       overflow: hidden;
+      position: relative;
     }
 
     /* ── SIDEBAR ── */
@@ -214,25 +250,6 @@
       cursor: pointer;
     }
 
-    /* ── SPECIES TAG CLOUD ── */
-    .tag-cloud { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-    .tag {
-      font-size: 11px;
-      font-family: 'DM Mono', monospace;
-      padding: 3px 9px;
-      border-radius: 20px;
-      border: 1px solid var(--border2);
-      color: var(--text2);
-      cursor: pointer;
-      transition: all 0.15s;
-      user-select: none;
-    }
-    .tag:hover { border-color: var(--accent4); color: var(--accent4); }
-    .tag.selected { background: rgba(188,140,255,0.15); border-color: var(--accent4); color: var(--accent4); }
-
-    /* ── LOCATION TAG CLOUD ── */
-    .tag.loc:hover { border-color: var(--accent3); color: var(--accent3); }
-    .tag.loc.selected { background: rgba(240,136,62,0.15); border-color: var(--accent3); color: var(--accent3); }
 
     /* ── APPLY / CLEAR ── */
     .btn-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 4px; }
@@ -263,7 +280,7 @@
     }
     .btn-clear:hover { border-color: var(--danger); color: var(--danger); }
 
-    /* ── RESULT COUNT ── */
+    /* ── RESULT BAR ── */
     .result-bar {
       padding: 8px 16px;
       background: var(--bg2);
@@ -278,7 +295,6 @@
     }
     .result-bar .hl { color: var(--accent); font-weight: 500; }
 
-    /* ── EXPORT ── */
     .btn-export {
       margin-left: auto;
       background: transparent;
@@ -293,7 +309,7 @@
     }
     .btn-export:hover { border-color: var(--accent3); color: var(--accent3); }
 
-    /* ── MAP AREA ── */
+    /* ── MAP ── */
     .map-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
     #map { flex: 1; }
 
@@ -310,15 +326,13 @@
     .leaflet-popup-tip { background: var(--bg2); }
     .leaflet-popup-content { font-size: 13px; line-height: 1.6; }
     .popup-species { font-weight: 500; font-size: 14px; color: var(--accent); margin-bottom: 4px; }
-    .popup-journal { color: var(--text2); font-size: 12px; }
-    .popup-year { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent2); }
     .popup-doi { display: inline-block; margin-top: 6px; font-size: 11px; color: var(--accent2); text-decoration: none; border-bottom: 1px solid rgba(88,166,255,0.3); }
     .popup-doi:hover { border-color: var(--accent2); }
 
-    /* ── TOGGLE SIDEBAR BUTTON ── */
+    /* ── SIDEBAR TOGGLE ── */
     .toggle-btn {
       position: absolute;
-      top: 60px;
+      top: 8px;
       left: 308px;
       z-index: 500;
       background: var(--bg2);
@@ -337,11 +351,10 @@
     .toggle-btn:hover { color: var(--text); }
     .toggle-btn.collapsed-btn { left: 0px; }
 
-    /* ── NO DATA STATE ── */
+    /* ── NO DATA ── */
     .no-data {
       position: absolute;
-      top: 50%;
-      left: 50%;
+      top: 50%; left: 50%;
       transform: translate(-50%, -50%);
       text-align: center;
       pointer-events: none;
@@ -355,7 +368,6 @@
 </head>
 <body>
 
-<!-- TOPBAR -->
 <nav class="topbar">
   <a href="index.html" class="topbar-brand">
     <span class="dot"></span>
@@ -369,17 +381,19 @@
   </div>
 </nav>
 
-<!-- MAIN -->
-<div class="main" style="position:relative;">
+<div class="main">
 
-  <!-- SIDEBAR TOGGLE -->
+  <!-- Loading / error overlay -->
+  <div id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loadingText">Loading data…</div>
+  </div>
+
   <button class="toggle-btn" id="toggleBtn" onclick="toggleSidebar()" title="Toggle sidebar">‹</button>
 
-  <!-- SIDEBAR -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-inner">
 
-      <!-- STATS STRIP -->
       <div class="stats-strip">
         <div class="stat-card">
           <div class="stat-label">records</div>
@@ -399,25 +413,6 @@
         </div>
       </div>
 
-      <!-- SPECIES FILTER (tag cloud) -->
-      <div class="filter-section">
-        <div class="filter-label">
-          Species
-          <span class="count-badge" id="speciesCount">0</span>
-        </div>
-        <input type="text" id="speciesSearch" placeholder="Search species…" oninput="filterSpeciesCloud(); onLiveInput();" style="margin-bottom:10px;">
-        <div class="tag-cloud" id="speciesTagCloud"></div>
-      </div>
-
-      <!-- LOCATION FILTER (tag cloud) -->
-      <div class="filter-section">
-        <div class="filter-label">
-          Location / Country
-          <span class="count-badge" id="locationCount">0</span>
-        </div>
-        <input type="text" id="locationSearch" placeholder="Search locations…" oninput="filterLocationCloud(); onLiveInput();" style="margin-bottom:10px;">
-        <div class="tag-cloud" id="locationTagCloud"></div>
-      </div>
 
       <!-- YEAR RANGE -->
       <div class="filter-section">
@@ -426,8 +421,10 @@
           <span class="count-badge" id="yearBadge">all years</span>
         </div>
         <div class="year-row">
-          <input type="number" id="yearMin" placeholder="From" oninput="syncRangeFromInput(); onLiveInput();">
-          <input type="number" id="yearMax" placeholder="To"   oninput="syncRangeFromInput(); onLiveInput();">
+          <input type="number" id="yearMin" placeholder="From"
+                 oninput="syncRangeFromInput(); onLiveInput();">
+          <input type="number" id="yearMax" placeholder="To"
+                 oninput="syncRangeFromInput(); onLiveInput();">
         </div>
         <div class="range-wrap">
           <div class="range-labels">
@@ -439,10 +436,11 @@
         </div>
       </div>
 
-      <!-- TITLE SEARCH -->
+      <!-- TITLE -->
       <div class="filter-section">
         <div class="filter-label">Title keyword</div>
-        <input type="text" id="titleSearch" placeholder="Search by title keyword…" oninput="onLiveInput()">
+        <input type="text" id="titleSearch" placeholder="Search by title keyword…"
+               oninput="onLiveInput()">
       </div>
 
       <!-- SAMPLE SIZE -->
@@ -457,7 +455,6 @@
         </div>
       </div>
 
-      <!-- BUTTONS -->
       <div class="btn-row">
         <button class="btn-apply" onclick="applyFilters()">Apply filters</button>
         <button class="btn-clear" onclick="clearAll()">Clear</button>
@@ -465,14 +462,12 @@
 
     </div>
 
-    <!-- RESULT COUNT -->
     <div class="result-bar">
       <span>Showing <span class="hl" id="resultCount">—</span> records</span>
       <button class="btn-export" onclick="exportCSV()">↓ CSV</button>
     </div>
   </aside>
 
-  <!-- MAP -->
   <div class="map-wrap">
     <div id="map"></div>
     <div class="no-data" id="noData">
@@ -483,25 +478,28 @@
 
 </div>
 
-<!-- SCRIPTS -->
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
 
 <script>
-/* ── EMBEDDED GEOJSON DATA ── */
-const GEOJSON_DATA_old = {"type": "FeatureCollection", "name": "study_df_test", "crs": {"type": "name", "properties": {"name": "urn:ogc:def:crs:OGC:1.3:CRS84"}}, "features": [{"type": "Feature", "properties": {"Title": "Poaching and human encroachment reverse recovery of African savannah elephants in south-east Angola despite 14 years of peace", "DOI": "10.1371/journal.pone.0193469", "Publication Year": 2018.0, "Sample Size": 8.0, "Location": "Cuando-Cubango province", "species": "Loxodonta africana"}, "geometry": {"type": "Point", "coordinates": [-16.283021, 19.504682]}}, {"type": "Feature", "properties": {"Title": "Spatial patterns in activity of leopard seals Hydrurga leptonyx in relation to sea ice", "DOI": "10.3354/meps11120", "Publication Year": 2015.0, "Sample Size": 12.0, "Location": "Argentine Antarctic Station Primavera, Danco Coast", "species": "Hydrurga leptonyx"}, "geometry": {"type": "Point", "coordinates": [-64.15, -60.95]}}, {"type": "Feature", "properties": {"Title": "Pinniped Research at Cape Shirreff, Livingston Island, Antarctica.", "DOI": "NA", "Publication Year": 2009.0, "Sample Size": 11.0, "Location": "Cape Shirreff", "species": "Arctocephalus gazella"}, "geometry": {"type": "Point", "coordinates": [-62.466667, -60.766667]}}, {"type": "Feature", "properties": {"Title": "Pinniped Research at Cape Shirreff, Livingston Island, Antarctica.", "DOI": "NA", "Publication Year": 2009.0, "Sample Size": 12.0, "Location": "Cape Shirreff", "species": "Mirounga leonina"}, "geometry": {"type": "Point", "coordinates": [-62.466667, -60.766667]}}, {"type": "Feature", "properties": {"Title": "Joint estimation over multiple individuals improves behavioural state inference from animal movement data", "DOI": "10.1038/srep20625", "Publication Year": 2016.0, "Sample Size": 10.0, "Location": "Davis Station", "species": "Leptonychotes weddellii"}, "geometry": {"type": "Point", "coordinates": [-68.5762241574292, 77.969155]}}]};
+/* ─────────────────────────────────────────────
+   CONFIGURATION
+   Keep this HTML file alongside your GeoJSON.
+   Update GEOJSON_FILE if you rename the file.
+───────────────────────────────────────────── */
+const GEOJSON_FILE = 'study_df_new.geojson';
 
-const GEOJSON_DATA = 'study_df_new.geojson';
 /* ── STATE ── */
-let geoData = null;
+let geoData          = null;
 let filteredFeatures = [];
 let selectedSpecies  = new Set();
 let selectedLocations = new Set();
-let liveFilter = true;
-let sidebarOpen = true;
-let dataYearMin = Infinity, dataYearMax = -Infinity;
+let liveFilter       = true;
+let sidebarOpen      = true;
+let dataYearMin      = Infinity;
+let dataYearMax      = -Infinity;
 
-/* ── MAP INIT ── */
+/* ── MAP ── */
 const map = L.map('map', { zoomControl: false }).setView([20, 0], 2);
 L.control.zoom({ position: 'bottomright' }).addTo(map);
 
@@ -518,10 +516,14 @@ const clusterGroup = L.markerClusterGroup({
   zoomToBoundsOnClick: true,
   iconCreateFunction(cluster) {
     const n = cluster.getChildCount();
-    const size = n < 10 ? 34 : n < 50 ? 42 : 52;
+    const size  = n < 10 ? 34 : n < 50 ? 42 : 52;
     const color = n < 10 ? '#3fb950' : n < 50 ? '#58a6ff' : '#f0883e';
     return L.divIcon({
-      html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color}22;border:1.5px solid ${color};display:flex;align-items:center;justify-content:center;color:${color};font-family:'DM Mono',monospace;font-size:12px;font-weight:500;">${n}</div>`,
+      html: `<div style="width:${size}px;height:${size}px;border-radius:50%;
+               background:${color}22;border:1.5px solid ${color};
+               display:flex;align-items:center;justify-content:center;
+               color:${color};font-family:'DM Mono',monospace;
+               font-size:12px;font-weight:500;">${n}</div>`,
       className: '',
       iconSize: [size, size]
     });
@@ -529,25 +531,40 @@ const clusterGroup = L.markerClusterGroup({
 });
 clusterGroup.addTo(map);
 
-/* ── INIT DATA ── */
-function initData() {
-  geoData = GEOJSON_DATA;
-  const features = geoData.features;
+/* ── FETCH GEOJSON ── */
+fetch(GEOJSON_FILE)
+  .then(r => r.json())
+  .then(data => {
+    geoData = data;
+    const features = data.features;
 
-  features.forEach(f => {
-    const y = +f.properties['Publication Year'];
-    if (!isNaN(y)) {
-      if (y < dataYearMin) dataYearMin = y;
-      if (y > dataYearMax) dataYearMax = y;
-    }
+    features.forEach(f => {
+      const y = +f.properties['Publication Year'];
+      if (!isNaN(y)) {
+        if (y < dataYearMin) dataYearMin = y;
+        if (y > dataYearMax) dataYearMax = y;
+      }
+    });
+
+    initRangeSliders();
+    updateStats(features, features);
+    applyFilters();
+
+    document.getElementById('loadingOverlay').classList.add('hidden');
+  })
+  .catch(err => {
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.querySelector('.spinner').style.display = 'none';
+    document.getElementById('loadingText').style.display = 'none';
+    overlay.insertAdjacentHTML('beforeend',
+      `<div class="error-msg">
+        ⚠ Failed to load <code>${GEOJSON_FILE}</code><br><br>
+        Make sure the GeoJSON file is in the <strong>same folder</strong> as this HTML file
+        and you are serving it via a local server (e.g. <code>python -m http.server</code>).
+        <br><br><small>${err.message}</small>
+      </div>`
+    );
   });
-
-  initRangeSliders();
-  buildSpeciesCloud(features);
-  buildLocationCloud(features);
-  updateStats(features, features);
-  applyFilters();
-}
 
 /* ── RANGE SLIDERS ── */
 function initRangeSliders() {
@@ -565,15 +582,15 @@ function initRangeSliders() {
 }
 
 function syncInputFromRange(which) {
-  const rMin = +document.getElementById('yearRangeMin').value;
-  const rMax = +document.getElementById('yearRangeMax').value;
-  if (which === 'min' && rMin > rMax) document.getElementById('yearRangeMin').value = rMax;
-  if (which === 'max' && rMax < rMin) document.getElementById('yearRangeMax').value = rMin;
-  document.getElementById('yearMin').value = document.getElementById('yearRangeMin').value;
-  document.getElementById('yearMax').value = document.getElementById('yearRangeMax').value;
-  document.getElementById('rangeMinLbl').textContent = document.getElementById('yearRangeMin').value;
-  document.getElementById('rangeMaxLbl').textContent = document.getElementById('yearRangeMax').value;
-  document.getElementById('yearBadge').textContent = `${document.getElementById('yearRangeMin').value} – ${document.getElementById('yearRangeMax').value}`;
+  let rMin = +document.getElementById('yearRangeMin').value;
+  let rMax = +document.getElementById('yearRangeMax').value;
+  if (which === 'min' && rMin > rMax) { rMin = rMax; document.getElementById('yearRangeMin').value = rMin; }
+  if (which === 'max' && rMax < rMin) { rMax = rMin; document.getElementById('yearRangeMax').value = rMax; }
+  document.getElementById('yearMin').value = rMin;
+  document.getElementById('yearMax').value = rMax;
+  document.getElementById('rangeMinLbl').textContent = rMin;
+  document.getElementById('rangeMaxLbl').textContent = rMax;
+  document.getElementById('yearBadge').textContent = `${rMin} – ${rMax}`;
   onLiveInput();
 }
 
@@ -587,115 +604,54 @@ function syncRangeFromInput() {
   document.getElementById('yearBadge').textContent = `${mn} – ${mx}`;
 }
 
-/* ── SPECIES TAG CLOUD ── */
-function buildSpeciesCloud(features) {
-  const all = [...new Set(features.map(f => f.properties['species']).filter(Boolean))].sort();
-  document.getElementById('speciesCount').textContent = all.length;
-  renderSpeciesTags(all);
-}
 
-function renderSpeciesTags(list) {
-  const cloud = document.getElementById('speciesTagCloud');
-  cloud.innerHTML = '';
-  list.forEach(sp => {
-    const tag = document.createElement('span');
-    tag.className = 'tag' + (selectedSpecies.has(sp) ? ' selected' : '');
-    tag.textContent = sp;
-    tag.title = sp;
-    tag.onclick = () => {
-      if (selectedSpecies.has(sp)) { selectedSpecies.delete(sp); tag.classList.remove('selected'); }
-      else { selectedSpecies.add(sp); tag.classList.add('selected'); }
-      onLiveInput();
-    };
-    cloud.appendChild(tag);
-  });
-}
-
-function filterSpeciesCloud() {
-  const q = document.getElementById('speciesSearch').value.toLowerCase();
-  const all = [...new Set(geoData.features.map(f => f.properties['species']).filter(Boolean))].sort();
-  renderSpeciesTags(all.filter(s => s.toLowerCase().includes(q)));
-}
-
-/* ── LOCATION TAG CLOUD ── */
-function buildLocationCloud(features) {
-  const all = [...new Set(features.map(f => f.properties['Location']).filter(Boolean))].sort();
-  document.getElementById('locationCount').textContent = all.length;
-  renderLocationTags(all);
-}
-
-function renderLocationTags(list) {
-  const cloud = document.getElementById('locationTagCloud');
-  cloud.innerHTML = '';
-  list.forEach(loc => {
-    const tag = document.createElement('span');
-    tag.className = 'tag loc' + (selectedLocations.has(loc) ? ' selected' : '');
-    tag.textContent = loc;
-    tag.title = loc;
-    tag.onclick = () => {
-      if (selectedLocations.has(loc)) { selectedLocations.delete(loc); tag.classList.remove('selected'); }
-      else { selectedLocations.add(loc); tag.classList.add('selected'); }
-      onLiveInput();
-    };
-    cloud.appendChild(tag);
-  });
-}
-
-function filterLocationCloud() {
-  const q = document.getElementById('locationSearch').value.toLowerCase();
-  const all = [...new Set(geoData.features.map(f => f.properties['Location']).filter(Boolean))].sort();
-  renderLocationTags(all.filter(l => l.toLowerCase().includes(q)));
-}
-
-/* ── LIVE FILTER TOGGLE ── */
+/* ── LIVE / APPLY ── */
 function toggleLive() {
   liveFilter = !liveFilter;
   document.getElementById('liveChip').classList.toggle('active', liveFilter);
 }
+function onLiveInput() { if (liveFilter) applyFilters(); }
 
-function onLiveInput() {
-  if (liveFilter) applyFilters();
-}
-
-/* ── APPLY FILTERS ── */
+/* ── FILTERS ── */
 function applyFilters() {
   if (!geoData) return;
 
-  const speciesQ   = document.getElementById('speciesSearch').value.toLowerCase().trim();
-  const locationQ  = document.getElementById('locationSearch').value.toLowerCase().trim();
-  const titleQ     = document.getElementById('titleSearch').value.toLowerCase().trim();
-  const yearMin    = document.getElementById('yearMin').value ? +document.getElementById('yearMin').value : dataYearMin;
-  const yearMax    = document.getElementById('yearMax').value ? +document.getElementById('yearMax').value : dataYearMax;
-  const sampleMin  = document.getElementById('sampleMin').value ? +document.getElementById('sampleMin').value : null;
-  const sampleMax  = document.getElementById('sampleMax').value ? +document.getElementById('sampleMax').value : null;
+  const speciesQ  = document.getElementById('speciesSearch').value.toLowerCase().trim();
+  const locationQ = document.getElementById('locationSearch').value.toLowerCase().trim();
+  const titleQ    = document.getElementById('titleSearch').value.toLowerCase().trim();
+  const yearMin   = document.getElementById('yearMin').value ? +document.getElementById('yearMin').value : dataYearMin;
+  const yearMax   = document.getElementById('yearMax').value ? +document.getElementById('yearMax').value : dataYearMax;
+  const sampleMin = document.getElementById('sampleMin').value ? +document.getElementById('sampleMin').value : null;
+  const sampleMax = document.getElementById('sampleMax').value ? +document.getElementById('sampleMax').value : null;
 
   filteredFeatures = geoData.features.filter(f => {
     const p = f.properties;
 
-    // Species: tag selection takes priority over text search
     const matchSpecies = selectedSpecies.size > 0
       ? selectedSpecies.has(p['species'])
       : (!speciesQ || (p['species'] || '').toLowerCase().includes(speciesQ));
 
-    // Location: tag selection takes priority over text search
     const matchLocation = selectedLocations.size > 0
       ? selectedLocations.has(p['Location'])
       : (!locationQ || (p['Location'] || '').toLowerCase().includes(locationQ));
 
-    const matchTitle   = !titleQ || (p['Title'] || '').toLowerCase().includes(titleQ);
-    const year = +p['Publication Year'];
-    const matchYear    = year >= yearMin && year <= yearMax;
-    const n = +p['Sample Size'];
-    const matchSampleMin = sampleMin === null || n >= sampleMin;
-    const matchSampleMax = sampleMax === null || n <= sampleMax;
+    const matchTitle = !titleQ || (p['Title'] || '').toLowerCase().includes(titleQ);
 
-    return matchSpecies && matchLocation && matchTitle && matchYear && matchSampleMin && matchSampleMax;
+    const year = +p['Publication Year'];
+    const matchYear = year >= yearMin && year <= yearMax;
+
+    const n = +p['Sample Size'];
+    const matchSample = (sampleMin === null || n >= sampleMin) &&
+                        (sampleMax === null || n <= sampleMax);
+
+    return matchSpecies && matchLocation && matchTitle && matchYear && matchSample;
   });
 
   updateMap(filteredFeatures);
   updateStats(geoData.features, filteredFeatures);
 
-  const hasFilters = speciesQ || locationQ || titleQ || selectedSpecies.size > 0 || selectedLocations.size > 0 ||
+  const hasFilters = speciesQ || locationQ || titleQ ||
+    selectedSpecies.size > 0 || selectedLocations.size > 0 ||
     document.getElementById('yearMin').value || document.getElementById('yearMax').value ||
     document.getElementById('sampleMin').value || document.getElementById('sampleMax').value;
   document.getElementById('clearTopBtn').style.display = hasFilters ? 'inline-flex' : 'none';
@@ -706,12 +662,12 @@ function applyFilters() {
     (sn === '—' && sx === '—') ? 'all' : `${sn} – ${sx}`;
 }
 
-/* ── UPDATE MAP ── */
+/* ── MAP UPDATE ── */
 function updateMap(features) {
   clusterGroup.clearLayers();
-
   const noData = document.getElementById('noData');
-  if (features.length === 0) { noData.classList.add('visible'); return; }
+
+  if (!features.length) { noData.classList.add('visible'); return; }
   noData.classList.remove('visible');
 
   const layer = L.geoJSON({ type: 'FeatureCollection', features }, {
@@ -733,9 +689,11 @@ function updateMap(features) {
         <div class="popup-species">${p['species'] || 'Unknown species'}</div>
         <div style="font-size:12px;color:#8b949e;margin-bottom:6px;line-height:1.4;">${p['Title'] || ''}</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;">
-          <span class="popup-year">📅 ${p['Publication Year'] ? Math.round(p['Publication Year']) : ''}</span>
+          <span style="font-family:'DM Mono',monospace;font-size:11px;color:#58a6ff;">
+            📅 ${p['Publication Year'] ? Math.round(p['Publication Year']) : '—'}
+          </span>
           ${p['Sample Size'] ? `<span style="font-family:'DM Mono',monospace;font-size:11px;color:#f0883e;">n = ${p['Sample Size']}</span>` : ''}
-          ${p['Location'] ? `<span style="font-family:'DM Mono',monospace;font-size:11px;color:#bc8cff;">📍 ${p['Location']}</span>` : ''}
+          ${p['Location']    ? `<span style="font-family:'DM Mono',monospace;font-size:11px;color:#bc8cff;">📍 ${p['Location']}</span>` : ''}
         </div>
         ${doi}
       `, { maxWidth: 280 });
@@ -758,17 +716,13 @@ function updateStats(all, filtered) {
   document.getElementById('resultCount').textContent  = filtered.length.toLocaleString();
 }
 
-/* ── CLEAR ALL ── */
+/* ── CLEAR ── */
 function clearAll() {
   ['speciesSearch','locationSearch','titleSearch','yearMin','yearMax','sampleMin','sampleMax']
     .forEach(id => document.getElementById(id).value = '');
   selectedSpecies.clear();
   selectedLocations.clear();
-  if (geoData) {
-    initRangeSliders();
-    buildSpeciesCloud(geoData.features);
-    buildLocationCloud(geoData.features);
-  }
+  if (geoData) initRangeSliders();
   document.getElementById('sampleBadge').textContent = 'all';
   document.getElementById('clearTopBtn').style.display = 'none';
   applyFilters();
@@ -789,7 +743,7 @@ function exportCSV() {
   a.click();
 }
 
-/* ── SIDEBAR TOGGLE ── */
+/* ── SIDEBAR ── */
 function toggleSidebar() {
   sidebarOpen = !sidebarOpen;
   document.getElementById('sidebar').classList.toggle('collapsed', !sidebarOpen);
@@ -798,9 +752,6 @@ function toggleSidebar() {
   btn.classList.toggle('collapsed-btn', !sidebarOpen);
   setTimeout(() => map.invalidateSize(), 260);
 }
-
-/* ── BOOT ── */
-initData();
 </script>
 
 </body>
