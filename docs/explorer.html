@@ -532,12 +532,9 @@ const clusterGroup = L.markerClusterGroup({
 clusterGroup.addTo(map);
 
 /* ── FETCH GEOJSON ── */
-fetch(GEOJSON_FILE)
-  .then(r => r.json())
-  .then(data => {
-    geoData = data;
-    const features = data.features;
-
+function initData() {
+  geoData = GEOJSON_DATA;
+  const features = geoData.features;
     features.forEach(f => {
       const y = +f.properties['Publication Year'];
       if (!isNaN(y)) {
