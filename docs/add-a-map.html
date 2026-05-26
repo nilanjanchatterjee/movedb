@@ -1,264 +1,33 @@
 <!DOCTYPE html>
-<html lang="" xml:lang="">
+<html>
 <head>
-
-  <meta charset="utf-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <title>5 Add a Map | Building Web Maps with Leaflet</title>
-  <meta name="description" content="5 Add a Map | Building Web Maps with Leaflet" />
-  <meta name="generator" content="bookdown 0.29 and GitBook 2.6.7" />
-
-  <meta property="og:title" content="5 Add a Map | Building Web Maps with Leaflet" />
-  <meta property="og:type" content="book" />
-  
-  
-  <meta name="github-repo" content="ucdavisdatalab/workshop_web_maps" />
-
-  <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="5 Add a Map | Building Web Maps with Leaflet" />
-  
-  
-  
-
-<meta name="author" content="Dr. Michele Tobias" />
-<meta name="author" content="Arthur Koehl" />
-<meta name="author" content="Naomi Kalman" />
-
-
-<meta name="date" content="2023-04-28" />
-
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
-  
-  
-<link rel="prev" href="prepare-your-page-for-a-leaflet-web-map.html"/>
-<link rel="next" href="use-external-data.html"/>
-<script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6/dist/fuse.min.js"></script>
-<link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
-<link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
-<link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
-<link href="libs/gitbook-2.6.7/css/plugin-highlight.css" rel="stylesheet" />
-<link href="libs/gitbook-2.6.7/css/plugin-search.css" rel="stylesheet" />
-<link href="libs/gitbook-2.6.7/css/plugin-fontsettings.css" rel="stylesheet" />
-<link href="libs/gitbook-2.6.7/css/plugin-clipboard.css" rel="stylesheet" />
-
-
-
-
-
-
-
-
-<link href="libs/anchor-sections-1.1.0/anchor-sections.css" rel="stylesheet" />
-<link href="libs/anchor-sections-1.1.0/anchor-sections-hash.css" rel="stylesheet" />
-<script src="libs/anchor-sections-1.1.0/anchor-sections.js"></script>
-
-
-
-
+  <title>Add your data</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 
 <body>
 
-
-
-  <div class="book without-animation with-summary font-size-2 font-family-1" data-basepath=".">
-
-    <div class="book-summary">
-      <nav role="navigation">
-
-<ul class="summary">
-<li><a href="https://datalab.ucdavis.edu/">
-  <img src="https://datalab.ucdavis.edu/wp-content/uploads/2019/07/datalab-logo-full-color-rgb-1.png" style="height: 100%; width: 100%; object-fit: contain" />
-</a></li>
-<li><a href="./" style="font-size: 18px">Building Web Maps with Leaflet</a></li>
-
-<li class="divider"></li>
-<li class="chapter" data-level="" data-path="index.html"><a href="index.html"><i class="fa fa-check"></i>Overview</a>
-<ul>
-<li class="chapter" data-level="0.1" data-path="index.html"><a href="index.html#description"><i class="fa fa-check"></i><b>0.1</b> Description</a></li>
-<li class="chapter" data-level="0.2" data-path="index.html"><a href="index.html#learning-objectives"><i class="fa fa-check"></i><b>0.2</b> Learning Objectives</a></li>
-<li class="chapter" data-level="0.3" data-path="index.html"><a href="index.html#skills"><i class="fa fa-check"></i><b>0.3</b> Skills</a></li>
-<li class="chapter" data-level="0.4" data-path="index.html"><a href="index.html#prerequisites"><i class="fa fa-check"></i><b>0.4</b> Prerequisites</a></li>
-<li class="chapter" data-level="0.5" data-path="index.html"><a href="index.html#software-tools"><i class="fa fa-check"></i><b>0.5</b> Software &amp; Tools</a></li>
-</ul></li>
-<li class="chapter" data-level="1" data-path="introduction.html"><a href="introduction.html"><i class="fa fa-check"></i><b>1</b> Introduction</a>
-<ul>
-<li class="chapter" data-level="1.1" data-path="introduction.html"><a href="introduction.html#what-is-a-web-map"><i class="fa fa-check"></i><b>1.1</b> What is a “Web Map”?</a></li>
-<li class="chapter" data-level="1.2" data-path="introduction.html"><a href="introduction.html#why-make-a-web-map"><i class="fa fa-check"></i><b>1.2</b> Why make a web map?</a></li>
-<li class="chapter" data-level="1.3" data-path="introduction.html"><a href="introduction.html#examples"><i class="fa fa-check"></i><b>1.3</b> Examples</a></li>
-<li class="chapter" data-level="1.4" data-path="introduction.html"><a href="introduction.html#workflow"><i class="fa fa-check"></i><b>1.4</b> Workflow</a></li>
-<li class="chapter" data-level="1.5" data-path="introduction.html"><a href="introduction.html#leaflet"><i class="fa fa-check"></i><b>1.5</b> Leaflet</a>
-<ul>
-<li class="chapter" data-level="1.5.1" data-path="introduction.html"><a href="introduction.html#other-web-map-tools"><i class="fa fa-check"></i><b>1.5.1</b> Other Web Map Tools</a></li>
-</ul></li>
-<li class="chapter" data-level="1.6" data-path="introduction.html"><a href="introduction.html#workshop-data-uc-davis-campus-food"><i class="fa fa-check"></i><b>1.6</b> Workshop Data: UC Davis Campus Food</a></li>
-</ul></li>
-<li class="chapter" data-level="2" data-path="set-up.html"><a href="set-up.html"><i class="fa fa-check"></i><b>2</b> Set Up</a>
-<ul>
-<li class="chapter" data-level="2.1" data-path="set-up.html"><a href="set-up.html#download-the-data"><i class="fa fa-check"></i><b>2.1</b> Download the Data</a></li>
-<li class="chapter" data-level="2.2" data-path="set-up.html"><a href="set-up.html#folders"><i class="fa fa-check"></i><b>2.2</b> Folders</a></li>
-<li class="chapter" data-level="2.3" data-path="set-up.html"><a href="set-up.html#files"><i class="fa fa-check"></i><b>2.3</b> Files</a></li>
-</ul></li>
-<li class="chapter" data-level="3" data-path="build-a-webpage.html"><a href="build-a-webpage.html"><i class="fa fa-check"></i><b>3</b> Build a Webpage</a>
-<ul>
-<li class="chapter" data-level="3.1" data-path="build-a-webpage.html"><a href="build-a-webpage.html#intro-to-html"><i class="fa fa-check"></i><b>3.1</b> Intro to HTML</a></li>
-<li class="chapter" data-level="3.2" data-path="build-a-webpage.html"><a href="build-a-webpage.html#start-building-your-webpage"><i class="fa fa-check"></i><b>3.2</b> Start Building your Webpage</a></li>
-</ul></li>
-<li class="chapter" data-level="4" data-path="prepare-your-page-for-a-leaflet-web-map.html"><a href="prepare-your-page-for-a-leaflet-web-map.html"><i class="fa fa-check"></i><b>4</b> Prepare Your Page for a Leaflet Web Map</a>
-<ul>
-<li class="chapter" data-level="4.1" data-path="prepare-your-page-for-a-leaflet-web-map.html"><a href="prepare-your-page-for-a-leaflet-web-map.html#load-the-external-files"><i class="fa fa-check"></i><b>4.1</b> Load The External Files</a></li>
-<li class="chapter" data-level="4.2" data-path="prepare-your-page-for-a-leaflet-web-map.html"><a href="prepare-your-page-for-a-leaflet-web-map.html#add-a-map-div"><i class="fa fa-check"></i><b>4.2</b> Add a Map Div</a></li>
-<li class="chapter" data-level="4.3" data-path="prepare-your-page-for-a-leaflet-web-map.html"><a href="prepare-your-page-for-a-leaflet-web-map.html#add-a-script-section"><i class="fa fa-check"></i><b>4.3</b> Add a Script Section</a></li>
-</ul></li>
-<li class="chapter" data-level="5" data-path="add-a-map.html"><a href="add-a-map.html"><i class="fa fa-check"></i><b>5</b> Add a Map</a>
-<ul>
-<li class="chapter" data-level="5.1" data-path="add-a-map.html"><a href="add-a-map.html#add-a-map-1"><i class="fa fa-check"></i><b>5.1</b> Add A Map</a></li>
-<li class="chapter" data-level="5.2" data-path="add-a-map.html"><a href="add-a-map.html#add-a-marker"><i class="fa fa-check"></i><b>5.2</b> Add a Marker</a></li>
-</ul></li>
-<li class="chapter" data-level="6" data-path="use-external-data.html"><a href="use-external-data.html"><i class="fa fa-check"></i><b>6</b> Use External Data</a>
-<ul>
-<li class="chapter" data-level="6.1" data-path="use-external-data.html"><a href="use-external-data.html#about-geojson"><i class="fa fa-check"></i><b>6.1</b> About GeoJSON</a></li>
-<li class="chapter" data-level="6.2" data-path="use-external-data.html"><a href="use-external-data.html#formatting-the-data"><i class="fa fa-check"></i><b>6.2</b> Formatting the Data</a></li>
-<li class="chapter" data-level="6.3" data-path="use-external-data.html"><a href="use-external-data.html#read-the-data"><i class="fa fa-check"></i><b>6.3</b> Read the Data</a></li>
-<li class="chapter" data-level="6.4" data-path="use-external-data.html"><a href="use-external-data.html#add-data-to-the-map"><i class="fa fa-check"></i><b>6.4</b> Add Data to the Map</a></li>
-</ul></li>
-<li class="chapter" data-level="7" data-path="add-a-popup.html"><a href="add-a-popup.html"><i class="fa fa-check"></i><b>7</b> Add a popup</a>
-<ul>
-<li class="chapter" data-level="7.1" data-path="add-a-popup.html"><a href="add-a-popup.html#add-a-popup-1"><i class="fa fa-check"></i><b>7.1</b> Add a popup</a></li>
-<li class="chapter" data-level="7.2" data-path="add-a-popup.html"><a href="add-a-popup.html#customize-popup-text-with-data"><i class="fa fa-check"></i><b>7.2</b> Customize Popup Text with Data</a></li>
-<li class="chapter" data-level="7.3" data-path="add-a-popup.html"><a href="add-a-popup.html#add-details-to-the-popup-text"><i class="fa fa-check"></i><b>7.3</b> Add details to the popup text</a></li>
-<li class="chapter" data-level="7.4" data-path="add-a-popup.html"><a href="add-a-popup.html#add-a-description-to-the-popup"><i class="fa fa-check"></i><b>7.4</b> Add a description to the popup</a></li>
-<li class="chapter" data-level="7.5" data-path="add-a-popup.html"><a href="add-a-popup.html#add-an-image-to-the-popup"><i class="fa fa-check"></i><b>7.5</b> Add an image to the popup</a></li>
-</ul></li>
-<li class="chapter" data-level="8" data-path="put-your-web-page-online.html"><a href="put-your-web-page-online.html"><i class="fa fa-check"></i><b>8</b> Put Your Web Page online</a></li>
-<li class="chapter" data-level="9" data-path="resources.html"><a href="resources.html"><i class="fa fa-check"></i><b>9</b> Resources</a></li>
-</ul>
-
-      </nav>
-    </div>
-
-    <div class="book-body">
-      <div class="body-inner">
-        <div class="book-header" role="navigation">
-          <h1>
-            <i class="fa fa-circle-o-notch fa-spin"></i><a href="./">Building Web Maps with Leaflet</a>
-          </h1>
-        </div>
-
-        <div class="page-wrapper" tabindex="-1" role="main">
-          <div class="page-inner">
-
-            <section class="normal" id="section-">
-<div id="add-a-map" class="section level1 hasAnchor" number="5">
-<h1><span class="header-section-number">5</span> Add a Map<a href="add-a-map.html#add-a-map" class="anchor-section" aria-label="Anchor link to header"></a></h1>
-<p><strong>START FROM HERE:</strong> You can keep working on your code from the previous section, or use the <a href="https://github.com/ucdavisdatalab/workshop_web_maps/blob/main/example_code/end_of_sec_4.html">example code up to this point in the workshop</a>.</p>
-<p>Now that we’ve prepared our webpage we can add our web map.</p>
-<div id="add-a-map-1" class="section level2 hasAnchor" number="5.1">
-<h2><span class="header-section-number">5.1</span> Add A Map<a href="add-a-map.html#add-a-map-1" class="anchor-section" aria-label="Anchor link to header"></a></h2>
-<p>Now we’re ready to add a map. We’ll make a simple one to start and add more data later.</p>
-<p>Inside the <code>&lt;script&gt;</code> section, we’ll now be writing javascript. <code>//</code> is how you indicate a comment in JavaScript. Outside of this section, you’ll be writing HTML. It can get confusing sometimes, so have patience with yourself.</p>
-<p>First, we’ll create an empty map in our mapid <code>&lt;div&gt;</code>, then we’ll load Stamen’s Toner tile service to use as a background layer. The limited color palette of the Toner tile service will make it easier to see the data we’ll be loading later.</p>
-<p>A tile service is a pre-built background layer that is available at various geographic scales. The data is stored on a server and we can request the data show up in our map. Some of these are free and open. Other require registration or charge a fee. Stamen has several free (and beautiful) tile services that we can use.</p>
-<p><strong>Note:</strong> from now on, we’ll be working in the <code>&lt;script&gt;</code> section, so the code will just show this section to avoid clutter and focus on what’s changing in the code.</p>
-<pre><code>&lt;script&gt;
-
-    <span style="background-color:#ffff7f">
-    //add an empty map called &quot;foodmap&quot; to the page in the mapid div
-    var foodmap = L.map(&#39;mapid&#39;, {
-        center: [38.538592, -121.75],
-        zoom: 15
-        });
-
-    //add the base map = Stamen Toner tile layer
-    var Stamen_Toner = L.tileLayer(&#39;https://stamen-tiles-{s}.a.ssl.fastly.net/toner/{z}/{x}/{y}.{ext}&#39;, {
-        attribution: &#39;Map tiles by &lt;a href=&quot;http://stamen.com&quot;&gt;Stamen Design&lt;/a&gt;, &lt;a href=&quot;http://creativecommons.org/licenses/by/3.0&quot;&gt;CC BY 3.0&lt;/a&gt; &amp;mdash; Map data &amp;copy; &lt;a href=&quot;http://www.openstreetmap.org/copyright&quot;&gt;OpenStreetMap&lt;/a&gt;&#39;,
-        subdomains: &#39;abcd&#39;,
-        minZoom: 0,
-        maxZoom: 20,
-        ext: &#39;png&#39;
-        });
-        foodmap.addLayer(Stamen_Toner);
-    </span>
-
-&lt;/script&gt;</code></pre>
-<p>Your web page should now have a map with Stamen’s Toner tile layer. It should look something like this:</p>
-<p><img src="images/webpage_section_5-1.png" title="Our web page now contains a web map with Stamen&#39;s Tonor tile layer" /></p>
-<p>We’ll add some of our own data to the map next.</p>
-</div>
-<div id="add-a-marker" class="section level2 hasAnchor" number="5.2">
-<h2><span class="header-section-number">5.2</span> Add a Marker<a href="add-a-map.html#add-a-marker" class="anchor-section" aria-label="Anchor link to header"></a></h2>
-<p>Let’s add a marker so we can find the Quad. The marker will be a blue inverted teardrop that will have a tooltip that says “Quad” when you hover over it. At the end of your script section, add:</p>
-<pre><code>    <span style="background-color:#ffff7f">
-    //add a marker for the Quad with a tooltip
-            //Quad coordinates: 38.541162, -121.749371
-    var marker = new L.marker([38.541112, -121.749350], {
-        opacity: 1.0   //teardrop marker opacity may be set to zero
-        });             
-        marker.bindTooltip(&quot;&lt;b&gt;Quad&lt;/b&gt;&quot;, { });
-        marker.addTo(foodmap);
-    </span>
-        
-&lt;/script&gt;</code></pre>
-<p>You now have an interactive map with one marker!</p>
-<p><img src="images/webpage_section_5-2.png" title="The web map now has a blue marker with a tooltip that says &#39;Quad&#39;" /></p>
-<p>Notice the order of the code: we first define the marker, then add the tooltip to the marker, and finally we have to add the marker to the map. Defining, adding specifications, then adding an item to the map is a pretty common workflow in Leaflet.</p>
-<p><strong>CHECK YOUR WORK:</strong> Compare your code with <a href="https://github.com/ucdavisdatalab/workshop_web_maps/blob/main/example_code/end_of_sec_5.html">example code up to this point in the workshop</a>.</p>
-
-</div>
-</div>
-            </section>
-
-          </div>
-        </div>
-      </div>
-<a href="prepare-your-page-for-a-leaflet-web-map.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
-<a href="use-external-data.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
-    </div>
+<nav class="navbar navbar-light bg-light">
+  <div class="container-fluid">
+    <a href="index.html">← Back to Map</a>
   </div>
-<script src="libs/gitbook-2.6.7/js/app.min.js"></script>
-<script src="libs/gitbook-2.6.7/js/clipboard.min.js"></script>
-<script src="libs/gitbook-2.6.7/js/plugin-search.js"></script>
-<script src="libs/gitbook-2.6.7/js/plugin-sharing.js"></script>
-<script src="libs/gitbook-2.6.7/js/plugin-fontsettings.js"></script>
-<script src="libs/gitbook-2.6.7/js/plugin-bookdown.js"></script>
-<script src="libs/gitbook-2.6.7/js/jquery.highlight.js"></script>
-<script src="libs/gitbook-2.6.7/js/plugin-clipboard.js"></script>
-<script>
-gitbook.require(["gitbook"], function(gitbook) {
-gitbook.start({
-"sharing": false,
-"fontsettings": {
-"theme": "white",
-"family": "sans",
-"size": 2
-},
-"edit": {
-"link": "https://github.com/ucdavisdatalab/workshop_web_maps/edit/master/05_add_a_map.Rmd",
-"text": "Edit"
-},
-"history": {
-"link": null,
-"text": null
-},
-"view": {
-"link": "https://github.com/ucdavisdatalab/workshop_web_maps/blob/master/05_add_a_map.Rmd",
-"text": null
-},
-"download": null,
-"search": {
-"engine": "fuse",
-"options": null
-},
-"toc": {
-"collapse": "section"
-}
-});
-});
-</script>
+</nav>
+
+<div class="container mt-4">
+  <h2>Methods</h2>
+
+  <p>
+    We try to update the map regularly with the updated data, but if you think any study are missing then please feel free to add your data here with the column headers, <br>
+    "Title" : Title of the study <br>
+    "DOI" : Digital Object Identifier of the study   <br>
+    "Publication Year":  Year of Publication<br>
+    "Sample Size" : Number of Tagged Individuals   <br>
+    "Location"  : Name of the study location <br>
+    "species" : Latin name of the study species<br>
+    "Latitude" : Latitude of the study location <br>
+    "Longitude" : Longitude of the study location <br>
+  </p>
+</div>
 
 </body>
-
 </html>

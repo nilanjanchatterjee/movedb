@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Explore Research Data</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css"/>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --bg2: #161b22;
+      --bg3: #1c2330;
+      --border: rgba(255,255,255,0.07);
+      --border2: rgba(255,255,255,0.13);
+      --text: #e6edf3;
+      --text2: #8b949e;
+      --text3: #6e7681;
+      --accent: #3fb950;
+      --accent2: #58a6ff;
+      --accent3: #f0883e;
+      --accent4: #bc8cff;
+      --danger: #f85149;
+      --card-radius: 10px;
+      --sidebar-w: 320px;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── TOPBAR ── */
+    .topbar {
+      height: 52px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 16px;
+      flex-shrink: 0;
+      z-index: 100;
+    }
+    .topbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--accent);
+      letter-spacing: 0.04em;
+      text-decoration: none;
+    }
+    .topbar-brand .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 2.4s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+    .topbar-divider { width: 1px; height: 24px; background: var(--border2); }
+    .topbar-title { font-size: 14px; color: var(--text2); font-weight: 400; }
+    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+
+    .chip {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--border2);
+      color: var(--text2);
+      background: transparent;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+    .chip:hover { border-color: var(--accent2); color: var(--accent2); }
+    .chip.active { background: rgba(88,166,255,0.12); border-color: var(--accent2); color: var(--accent2); }
+    .chip-danger { border-color: rgba(248,81,73,0.4); color: var(--danger); }
+    .chip-danger:hover { background: rgba(248,81,73,0.1); }
+
+    /* ── MAIN LAYOUT ── */
+    .main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      flex-shrink: 0;
+      transition: width 0.25s ease;
+    }
+    .sidebar.collapsed { width: 0; }
+
+    .sidebar-inner {
+      padding: 16px;
+      overflow-y: auto;
+      flex: 1;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border2) transparent;
+    }
+
+    /* ── STATS STRIP ── */
+    .stats-strip {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--card-radius);
+      padding: 10px 12px;
+    }
+    .stat-label {
+      font-size: 10px;
+      font-family: 'DM Mono', monospace;
+      color: var(--text3);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .stat-value {
+      font-family: 'DM Mono', monospace;
+      font-size: 22px;
+      font-weight: 500;
+      color: var(--text);
+      line-height: 1;
+    }
+    .stat-value.green  { color: var(--accent); }
+    .stat-value.blue   { color: var(--accent2); }
+    .stat-value.orange { color: var(--accent3); }
+    .stat-value.purple { color: var(--accent4); }
+
+    /* ── FILTER SECTION ── */
+    .filter-section { margin-bottom: 18px; }
+    .filter-label {
+      font-size: 10px;
+      font-family: 'DM Mono', monospace;
+      color: var(--text3);
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .filter-label .count-badge {
+      background: rgba(88,166,255,0.15);
+      color: var(--accent2);
+      border-radius: 10px;
+      padding: 1px 7px;
+      font-size: 10px;
+    }
+
+    input[type="text"], input[type="number"], select {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: 7px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      padding: 8px 12px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    select:focus { border-color: var(--accent2); }
+    input::placeholder { color: var(--text3); }
+    select option { background: var(--bg3); }
+
+    .year-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    .range-wrap { margin-top: 8px; }
+    .range-labels {
+      display: flex;
+      justify-content: space-between;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--text3);
+      margin-bottom: 4px;
+    }
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent2);
+      background: transparent;
+      cursor: pointer;
+    }
+
+    /* ── SPECIES TAG CLOUD ── */
+    .tag-cloud { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .tag {
+      font-size: 11px;
+      font-family: 'DM Mono', monospace;
+      padding: 3px 9px;
+      border-radius: 20px;
+      border: 1px solid var(--border2);
+      color: var(--text2);
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
+    }
+    .tag:hover { border-color: var(--accent4); color: var(--accent4); }
+    .tag.selected { background: rgba(188,140,255,0.15); border-color: var(--accent4); color: var(--accent4); }
+
+    /* ── LOCATION TAG CLOUD ── */
+    .tag.loc:hover { border-color: var(--accent3); color: var(--accent3); }
+    .tag.loc.selected { background: rgba(240,136,62,0.15); border-color: var(--accent3); color: var(--accent3); }
+
+    /* ── APPLY / CLEAR ── */
+    .btn-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 4px; }
+    .btn-apply {
+      background: var(--accent2);
+      color: #0d1117;
+      border: none;
+      border-radius: 7px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 9px 16px;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn-apply:hover { opacity: 0.88; }
+    .btn-apply:active { transform: scale(0.98); }
+    .btn-clear {
+      background: transparent;
+      border: 1px solid var(--border2);
+      border-radius: 7px;
+      color: var(--text2);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      padding: 9px 14px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-clear:hover { border-color: var(--danger); color: var(--danger); }
+
+    /* ── RESULT COUNT ── */
+    .result-bar {
+      padding: 8px 16px;
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text3);
+      font-family: 'DM Mono', monospace;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .result-bar .hl { color: var(--accent); font-weight: 500; }
+
+    /* ── EXPORT ── */
+    .btn-export {
+      margin-left: auto;
+      background: transparent;
+      border: 1px solid var(--border2);
+      border-radius: 6px;
+      color: var(--text2);
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      padding: 4px 12px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-export:hover { border-color: var(--accent3); color: var(--accent3); }
+
+    /* ── MAP AREA ── */
+    .map-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    #map { flex: 1; }
+
+    /* ── LEAFLET OVERRIDES ── */
+    .leaflet-container { background: #0a0e14 !important; }
+    .leaflet-popup-content-wrapper {
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      color: var(--text);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+      font-family: 'DM Sans', sans-serif;
+    }
+    .leaflet-popup-tip { background: var(--bg2); }
+    .leaflet-popup-content { font-size: 13px; line-height: 1.6; }
+    .popup-species { font-weight: 500; font-size: 14px; color: var(--accent); margin-bottom: 4px; }
+    .popup-journal { color: var(--text2); font-size: 12px; }
+    .popup-year { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent2); }
+    .popup-doi { display: inline-block; margin-top: 6px; font-size: 11px; color: var(--accent2); text-decoration: none; border-bottom: 1px solid rgba(88,166,255,0.3); }
+    .popup-doi:hover { border-color: var(--accent2); }
+
+    /* ── TOGGLE SIDEBAR BUTTON ── */
+    .toggle-btn {
+      position: absolute;
+      top: 60px;
+      left: 308px;
+      z-index: 500;
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: 0 6px 6px 0;
+      color: var(--text2);
+      width: 22px;
+      height: 40px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      transition: left 0.25s ease, color 0.15s;
+    }
+    .toggle-btn:hover { color: var(--text); }
+    .toggle-btn.collapsed-btn { left: 0px; }
+
+    /* ── NO DATA STATE ── */
+    .no-data {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      pointer-events: none;
+      z-index: 400;
+      display: none;
+    }
+    .no-data.visible { display: block; }
+    .no-data-icon { font-size: 40px; margin-bottom: 8px; opacity: 0.3; }
+    .no-data p { color: var(--text3); font-size: 13px; }
+  </style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<nav class="topbar">
+  <a href="index.html" class="topbar-brand">
+    <span class="dot"></span>
+    BIOMAP
+  </a>
+  <div class="topbar-divider"></div>
+  <span class="topbar-title">Spatial Explorer</span>
+  <div class="topbar-right">
+    <span class="chip active" id="liveChip" onclick="toggleLive()">● live filter</span>
+    <span class="chip chip-danger" id="clearTopBtn" onclick="clearAll()" style="display:none">clear all</span>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main" style="position:relative;">
+
+  <!-- SIDEBAR TOGGLE -->
+  <button class="toggle-btn" id="toggleBtn" onclick="toggleSidebar()" title="Toggle sidebar">‹</button>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-inner">
+
+      <!-- STATS STRIP -->
+      <div class="stats-strip">
+        <div class="stat-card">
+          <div class="stat-label">records</div>
+          <div class="stat-value green" id="statTotal">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">showing</div>
+          <div class="stat-value blue" id="statShowing">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">species</div>
+          <div class="stat-value orange" id="statSpecies">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">locations</div>
+          <div class="stat-value purple" id="statLocations">—</div>
+        </div>
+      </div>
+
+      <!-- SPECIES FILTER (tag cloud) -->
+      <div class="filter-section">
+        <div class="filter-label">
+          Species
+          <span class="count-badge" id="speciesCount">0</span>
+        </div>
+        <input type="text" id="speciesSearch" placeholder="Search species…" oninput="filterSpeciesCloud(); onLiveInput();" style="margin-bottom:10px;">
+        <div class="tag-cloud" id="speciesTagCloud"></div>
+      </div>
+
+      <!-- LOCATION FILTER (tag cloud) -->
+      <div class="filter-section">
+        <div class="filter-label">
+          Location / Country
+          <span class="count-badge" id="locationCount">0</span>
+        </div>
+        <input type="text" id="locationSearch" placeholder="Search locations…" oninput="filterLocationCloud(); onLiveInput();" style="margin-bottom:10px;">
+        <div class="tag-cloud" id="locationTagCloud"></div>
+      </div>
+
+      <!-- YEAR RANGE -->
+      <div class="filter-section">
+        <div class="filter-label">
+          Publication year
+          <span class="count-badge" id="yearBadge">all years</span>
+        </div>
+        <div class="year-row">
+          <input type="number" id="yearMin" placeholder="From" oninput="syncRangeFromInput(); onLiveInput();">
+          <input type="number" id="yearMax" placeholder="To"   oninput="syncRangeFromInput(); onLiveInput();">
+        </div>
+        <div class="range-wrap">
+          <div class="range-labels">
+            <span id="rangeMinLbl">—</span>
+            <span id="rangeMaxLbl">—</span>
+          </div>
+          <input type="range" id="yearRangeMin" oninput="syncInputFromRange('min')">
+          <input type="range" id="yearRangeMax" oninput="syncInputFromRange('max')">
+        </div>
+      </div>
+
+      <!-- TITLE SEARCH -->
+      <div class="filter-section">
+        <div class="filter-label">Title keyword</div>
+        <input type="text" id="titleSearch" placeholder="Search by title keyword…" oninput="onLiveInput()">
+      </div>
+
+      <!-- SAMPLE SIZE -->
+      <div class="filter-section">
+        <div class="filter-label">
+          Sample size
+          <span class="count-badge" id="sampleBadge">all</span>
+        </div>
+        <div class="year-row">
+          <input type="number" id="sampleMin" placeholder="Min n" oninput="onLiveInput()">
+          <input type="number" id="sampleMax" placeholder="Max n" oninput="onLiveInput()">
+        </div>
+      </div>
+
+      <!-- BUTTONS -->
+      <div class="btn-row">
+        <button class="btn-apply" onclick="applyFilters()">Apply filters</button>
+        <button class="btn-clear" onclick="clearAll()">Clear</button>
+      </div>
+
+    </div>
+
+    <!-- RESULT COUNT -->
+    <div class="result-bar">
+      <span>Showing <span class="hl" id="resultCount">—</span> records</span>
+      <button class="btn-export" onclick="exportCSV()">↓ CSV</button>
+    </div>
+  </aside>
+
+  <!-- MAP -->
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div class="no-data" id="noData">
+      <div class="no-data-icon">◎</div>
+      <p>No records match your filters</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- SCRIPTS -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+
+<script>
+/* ── EMBEDDED GEOJSON DATA ── */
+const GEOJSON_DATA_old = {"type": "FeatureCollection", "name": "study_df_test", "crs": {"type": "name", "properties": {"name": "urn:ogc:def:crs:OGC:1.3:CRS84"}}, "features": [{"type": "Feature", "properties": {"Title": "Poaching and human encroachment reverse recovery of African savannah elephants in south-east Angola despite 14 years of peace", "DOI": "10.1371/journal.pone.0193469", "Publication Year": 2018.0, "Sample Size": 8.0, "Location": "Cuando-Cubango province", "species": "Loxodonta africana"}, "geometry": {"type": "Point", "coordinates": [-16.283021, 19.504682]}}, {"type": "Feature", "properties": {"Title": "Spatial patterns in activity of leopard seals Hydrurga leptonyx in relation to sea ice", "DOI": "10.3354/meps11120", "Publication Year": 2015.0, "Sample Size": 12.0, "Location": "Argentine Antarctic Station Primavera, Danco Coast", "species": "Hydrurga leptonyx"}, "geometry": {"type": "Point", "coordinates": [-64.15, -60.95]}}, {"type": "Feature", "properties": {"Title": "Pinniped Research at Cape Shirreff, Livingston Island, Antarctica.", "DOI": "NA", "Publication Year": 2009.0, "Sample Size": 11.0, "Location": "Cape Shirreff", "species": "Arctocephalus gazella"}, "geometry": {"type": "Point", "coordinates": [-62.466667, -60.766667]}}, {"type": "Feature", "properties": {"Title": "Pinniped Research at Cape Shirreff, Livingston Island, Antarctica.", "DOI": "NA", "Publication Year": 2009.0, "Sample Size": 12.0, "Location": "Cape Shirreff", "species": "Mirounga leonina"}, "geometry": {"type": "Point", "coordinates": [-62.466667, -60.766667]}}, {"type": "Feature", "properties": {"Title": "Joint estimation over multiple individuals improves behavioural state inference from animal movement data", "DOI": "10.1038/srep20625", "Publication Year": 2016.0, "Sample Size": 10.0, "Location": "Davis Station", "species": "Leptonychotes weddellii"}, "geometry": {"type": "Point", "coordinates": [-68.5762241574292, 77.969155]}}]};
+
+const GEOJSON_DATA = 'study_df_new.geojson';
+/* ── STATE ── */
+let geoData = null;
+let filteredFeatures = [];
+let selectedSpecies  = new Set();
+let selectedLocations = new Set();
+let liveFilter = true;
+let sidebarOpen = true;
+let dataYearMin = Infinity, dataYearMax = -Infinity;
+
+/* ── MAP INIT ── */
+const map = L.map('map', { zoomControl: false }).setView([20, 0], 2);
+L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '© OpenStreetMap © CARTO',
+  maxZoom: 19
+}).addTo(map);
+
+const clusterGroup = L.markerClusterGroup({
+  maxClusterRadius: 60,
+  disableClusteringAtZoom: 14,
+  spiderfyOnMaxZoom: true,
+  showCoverageOnHover: false,
+  zoomToBoundsOnClick: true,
+  iconCreateFunction(cluster) {
+    const n = cluster.getChildCount();
+    const size = n < 10 ? 34 : n < 50 ? 42 : 52;
+    const color = n < 10 ? '#3fb950' : n < 50 ? '#58a6ff' : '#f0883e';
+    return L.divIcon({
+      html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color}22;border:1.5px solid ${color};display:flex;align-items:center;justify-content:center;color:${color};font-family:'DM Mono',monospace;font-size:12px;font-weight:500;">${n}</div>`,
+      className: '',
+      iconSize: [size, size]
+    });
+  }
+});
+clusterGroup.addTo(map);
+
+/* ── INIT DATA ── */
+function initData() {
+  geoData = GEOJSON_DATA;
+  const features = geoData.features;
+
+  features.forEach(f => {
+    const y = +f.properties['Publication Year'];
+    if (!isNaN(y)) {
+      if (y < dataYearMin) dataYearMin = y;
+      if (y > dataYearMax) dataYearMax = y;
+    }
+  });
+
+  initRangeSliders();
+  buildSpeciesCloud(features);
+  buildLocationCloud(features);
+  updateStats(features, features);
+  applyFilters();
+}
+
+/* ── RANGE SLIDERS ── */
+function initRangeSliders() {
+  const rMin = document.getElementById('yearRangeMin');
+  const rMax = document.getElementById('yearRangeMax');
+  rMin.min = rMax.min = dataYearMin;
+  rMin.max = rMax.max = dataYearMax;
+  rMin.value = dataYearMin;
+  rMax.value = dataYearMax;
+  document.getElementById('rangeMinLbl').textContent = dataYearMin;
+  document.getElementById('rangeMaxLbl').textContent = dataYearMax;
+  document.getElementById('yearMin').placeholder = dataYearMin;
+  document.getElementById('yearMax').placeholder = dataYearMax;
+  document.getElementById('yearBadge').textContent = `${dataYearMin} – ${dataYearMax}`;
+}
+
+function syncInputFromRange(which) {
+  const rMin = +document.getElementById('yearRangeMin').value;
+  const rMax = +document.getElementById('yearRangeMax').value;
+  if (which === 'min' && rMin > rMax) document.getElementById('yearRangeMin').value = rMax;
+  if (which === 'max' && rMax < rMin) document.getElementById('yearRangeMax').value = rMin;
+  document.getElementById('yearMin').value = document.getElementById('yearRangeMin').value;
+  document.getElementById('yearMax').value = document.getElementById('yearRangeMax').value;
+  document.getElementById('rangeMinLbl').textContent = document.getElementById('yearRangeMin').value;
+  document.getElementById('rangeMaxLbl').textContent = document.getElementById('yearRangeMax').value;
+  document.getElementById('yearBadge').textContent = `${document.getElementById('yearRangeMin').value} – ${document.getElementById('yearRangeMax').value}`;
+  onLiveInput();
+}
+
+function syncRangeFromInput() {
+  const mn = document.getElementById('yearMin').value || dataYearMin;
+  const mx = document.getElementById('yearMax').value || dataYearMax;
+  document.getElementById('yearRangeMin').value = mn;
+  document.getElementById('yearRangeMax').value = mx;
+  document.getElementById('rangeMinLbl').textContent = mn;
+  document.getElementById('rangeMaxLbl').textContent = mx;
+  document.getElementById('yearBadge').textContent = `${mn} – ${mx}`;
+}
+
+/* ── SPECIES TAG CLOUD ── */
+function buildSpeciesCloud(features) {
+  const all = [...new Set(features.map(f => f.properties['species']).filter(Boolean))].sort();
+  document.getElementById('speciesCount').textContent = all.length;
+  renderSpeciesTags(all);
+}
+
+function renderSpeciesTags(list) {
+  const cloud = document.getElementById('speciesTagCloud');
+  cloud.innerHTML = '';
+  list.forEach(sp => {
+    const tag = document.createElement('span');
+    tag.className = 'tag' + (selectedSpecies.has(sp) ? ' selected' : '');
+    tag.textContent = sp;
+    tag.title = sp;
+    tag.onclick = () => {
+      if (selectedSpecies.has(sp)) { selectedSpecies.delete(sp); tag.classList.remove('selected'); }
+      else { selectedSpecies.add(sp); tag.classList.add('selected'); }
+      onLiveInput();
+    };
+    cloud.appendChild(tag);
+  });
+}
+
+function filterSpeciesCloud() {
+  const q = document.getElementById('speciesSearch').value.toLowerCase();
+  const all = [...new Set(geoData.features.map(f => f.properties['species']).filter(Boolean))].sort();
+  renderSpeciesTags(all.filter(s => s.toLowerCase().includes(q)));
+}
+
+/* ── LOCATION TAG CLOUD ── */
+function buildLocationCloud(features) {
+  const all = [...new Set(features.map(f => f.properties['Location']).filter(Boolean))].sort();
+  document.getElementById('locationCount').textContent = all.length;
+  renderLocationTags(all);
+}
+
+function renderLocationTags(list) {
+  const cloud = document.getElementById('locationTagCloud');
+  cloud.innerHTML = '';
+  list.forEach(loc => {
+    const tag = document.createElement('span');
+    tag.className = 'tag loc' + (selectedLocations.has(loc) ? ' selected' : '');
+    tag.textContent = loc;
+    tag.title = loc;
+    tag.onclick = () => {
+      if (selectedLocations.has(loc)) { selectedLocations.delete(loc); tag.classList.remove('selected'); }
+      else { selectedLocations.add(loc); tag.classList.add('selected'); }
+      onLiveInput();
+    };
+    cloud.appendChild(tag);
+  });
+}
+
+function filterLocationCloud() {
+  const q = document.getElementById('locationSearch').value.toLowerCase();
+  const all = [...new Set(geoData.features.map(f => f.properties['Location']).filter(Boolean))].sort();
+  renderLocationTags(all.filter(l => l.toLowerCase().includes(q)));
+}
+
+/* ── LIVE FILTER TOGGLE ── */
+function toggleLive() {
+  liveFilter = !liveFilter;
+  document.getElementById('liveChip').classList.toggle('active', liveFilter);
+}
+
+function onLiveInput() {
+  if (liveFilter) applyFilters();
+}
+
+/* ── APPLY FILTERS ── */
+function applyFilters() {
+  if (!geoData) return;
+
+  const speciesQ   = document.getElementById('speciesSearch').value.toLowerCase().trim();
+  const locationQ  = document.getElementById('locationSearch').value.toLowerCase().trim();
+  const titleQ     = document.getElementById('titleSearch').value.toLowerCase().trim();
+  const yearMin    = document.getElementById('yearMin').value ? +document.getElementById('yearMin').value : dataYearMin;
+  const yearMax    = document.getElementById('yearMax').value ? +document.getElementById('yearMax').value : dataYearMax;
+  const sampleMin  = document.getElementById('sampleMin').value ? +document.getElementById('sampleMin').value : null;
+  const sampleMax  = document.getElementById('sampleMax').value ? +document.getElementById('sampleMax').value : null;
+
+  filteredFeatures = geoData.features.filter(f => {
+    const p = f.properties;
+
+    // Species: tag selection takes priority over text search
+    const matchSpecies = selectedSpecies.size > 0
+      ? selectedSpecies.has(p['species'])
+      : (!speciesQ || (p['species'] || '').toLowerCase().includes(speciesQ));
+
+    // Location: tag selection takes priority over text search
+    const matchLocation = selectedLocations.size > 0
+      ? selectedLocations.has(p['Location'])
+      : (!locationQ || (p['Location'] || '').toLowerCase().includes(locationQ));
+
+    const matchTitle   = !titleQ || (p['Title'] || '').toLowerCase().includes(titleQ);
+    const year = +p['Publication Year'];
+    const matchYear    = year >= yearMin && year <= yearMax;
+    const n = +p['Sample Size'];
+    const matchSampleMin = sampleMin === null || n >= sampleMin;
+    const matchSampleMax = sampleMax === null || n <= sampleMax;
+
+    return matchSpecies && matchLocation && matchTitle && matchYear && matchSampleMin && matchSampleMax;
+  });
+
+  updateMap(filteredFeatures);
+  updateStats(geoData.features, filteredFeatures);
+
+  const hasFilters = speciesQ || locationQ || titleQ || selectedSpecies.size > 0 || selectedLocations.size > 0 ||
+    document.getElementById('yearMin').value || document.getElementById('yearMax').value ||
+    document.getElementById('sampleMin').value || document.getElementById('sampleMax').value;
+  document.getElementById('clearTopBtn').style.display = hasFilters ? 'inline-flex' : 'none';
+
+  const sn = document.getElementById('sampleMin').value || '—';
+  const sx = document.getElementById('sampleMax').value || '—';
+  document.getElementById('sampleBadge').textContent =
+    (sn === '—' && sx === '—') ? 'all' : `${sn} – ${sx}`;
+}
+
+/* ── UPDATE MAP ── */
+function updateMap(features) {
+  clusterGroup.clearLayers();
+
+  const noData = document.getElementById('noData');
+  if (features.length === 0) { noData.classList.add('visible'); return; }
+  noData.classList.remove('visible');
+
+  const layer = L.geoJSON({ type: 'FeatureCollection', features }, {
+    pointToLayer(feature, latlng) {
+      return L.circleMarker(latlng, {
+        radius: 7,
+        fillColor: '#58a6ff',
+        color: '#0d1117',
+        weight: 1.5,
+        fillOpacity: 0.85
+      });
+    },
+    onEachFeature(feature, layer) {
+      const p = feature.properties;
+      const doi = p['DOI'] && p['DOI'] !== 'NA'
+        ? `<a class="popup-doi" href="https://doi.org/${p['DOI']}" target="_blank">View DOI ↗</a>`
+        : '';
+      layer.bindPopup(`
+        <div class="popup-species">${p['species'] || 'Unknown species'}</div>
+        <div style="font-size:12px;color:#8b949e;margin-bottom:6px;line-height:1.4;">${p['Title'] || ''}</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;">
+          <span class="popup-year">📅 ${p['Publication Year'] ? Math.round(p['Publication Year']) : ''}</span>
+          ${p['Sample Size'] ? `<span style="font-family:'DM Mono',monospace;font-size:11px;color:#f0883e;">n = ${p['Sample Size']}</span>` : ''}
+          ${p['Location'] ? `<span style="font-family:'DM Mono',monospace;font-size:11px;color:#bc8cff;">📍 ${p['Location']}</span>` : ''}
+        </div>
+        ${doi}
+      `, { maxWidth: 280 });
+    }
+  });
+
+  clusterGroup.addLayer(layer);
+  try { map.fitBounds(clusterGroup.getBounds(), { padding: [40, 40], maxZoom: 10 }); }
+  catch(e) {}
+}
+
+/* ── STATS ── */
+function updateStats(all, filtered) {
+  document.getElementById('statTotal').textContent    = all.length.toLocaleString();
+  document.getElementById('statShowing').textContent  = filtered.length.toLocaleString();
+  document.getElementById('statSpecies').textContent  =
+    new Set(filtered.map(f => f.properties['species']).filter(Boolean)).size.toLocaleString();
+  document.getElementById('statLocations').textContent =
+    new Set(filtered.map(f => f.properties['Location']).filter(Boolean)).size.toLocaleString();
+  document.getElementById('resultCount').textContent  = filtered.length.toLocaleString();
+}
+
+/* ── CLEAR ALL ── */
+function clearAll() {
+  ['speciesSearch','locationSearch','titleSearch','yearMin','yearMax','sampleMin','sampleMax']
+    .forEach(id => document.getElementById(id).value = '');
+  selectedSpecies.clear();
+  selectedLocations.clear();
+  if (geoData) {
+    initRangeSliders();
+    buildSpeciesCloud(geoData.features);
+    buildLocationCloud(geoData.features);
+  }
+  document.getElementById('sampleBadge').textContent = 'all';
+  document.getElementById('clearTopBtn').style.display = 'none';
+  applyFilters();
+}
+
+/* ── EXPORT CSV ── */
+function exportCSV() {
+  if (!filteredFeatures.length) return;
+  const keys = Object.keys(filteredFeatures[0].properties);
+  const rows = [keys.join(',')];
+  filteredFeatures.forEach(f => {
+    rows.push(keys.map(k => JSON.stringify(f.properties[k] ?? '')).join(','));
+  });
+  const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `filtered_records_${Date.now()}.csv`;
+  a.click();
+}
+
+/* ── SIDEBAR TOGGLE ── */
+function toggleSidebar() {
+  sidebarOpen = !sidebarOpen;
+  document.getElementById('sidebar').classList.toggle('collapsed', !sidebarOpen);
+  const btn = document.getElementById('toggleBtn');
+  btn.textContent = sidebarOpen ? '‹' : '›';
+  btn.classList.toggle('collapsed-btn', !sidebarOpen);
+  setTimeout(() => map.invalidateSize(), 260);
+}
+
+/* ── BOOT ── */
+initData();
+</script>
+
+</body>
+</html>
