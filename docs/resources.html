@@ -17,11 +17,19 @@
   <h2>Methods</h2>
 
   <p>
-    This database of published studies was compiled by extracting studies information from WebofScience.
+    We searched <a href = "https://www.webofscience.com/wos/woscc/smart-search">Web of Science</a> for studies on remote tracking of mammals, using terms related to tracking technology, animal groups, and research topics. Papers had to match at least two of these areas, and we also included common tracking-related keywords such as GPS tracking, satellite telemetry, and bio-logging.
+ </p>
+ <p>
+We limited the search to papers published after 1978 and kept only English-language records or those marked as unspecified. After removing non-article records, papers without abstracts, and duplicates, we screened the remaining abstracts for relevance.
+
   </p>
 
   <p>
-    Data were harmonized and standardized using reproducible workflows in R, and exported as GeoJSON for web visualization.
+    Several authors reviewed a large subset of abstracts by hand, sorting them into relevant, not relevant, or maybe relevant. These examples were then used to help train a computer-assisted screening process for the rest of the records. A paper was included if it clearly concerned movement or tracking, was a research article, used data from wild vertebrates, and involved satellite-based or passive acoustic tracking.
+  </p>
+  
+  <p>
+    Once the screening has been done, we extracted the information on species, tracking methods,  sample-size, tracking place and duration from the records to create the database. 
   </p>
 </div>
 
