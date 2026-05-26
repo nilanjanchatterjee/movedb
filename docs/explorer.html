@@ -435,7 +435,26 @@
           <input type="range" id="yearRangeMax" oninput="syncInputFromRange('max')">
         </div>
       </div>
+      
+       <!-- Species filtering -->
+<div class="filter-group">
+  <label for="speciesSearch">Species Search</label>
+  <input
+    type="text"
+    id="speciesSearch"
+    placeholder="Search species..."
+  />
+</div>
 
+<!-- Location filtering -->
+<div class="filter-group">
+  <label for="locationSearch">Location Search</label>
+  <input
+    type="text"
+    id="locationSearch"
+    placeholder="Search location..."
+  />
+</div>
       <!-- TITLE -->
       <div class="filter-section">
         <div class="filter-label">Title keyword</div>
@@ -533,35 +552,65 @@ clusterGroup.addTo(map);
 
 /* ── FETCH GEOJSON ── */
 function initData() {
-  geoData = GEOJSON_DATA;
-  const features = geoData.features;
-    features.forEach(f => {
-      const y = +f.properties['Publication Year'];
-      if (!isNaN(y)) {
-        if (y < dataYearMin) dataYearMin = y;
-        if (y > dataYearMax) dataYearMax = y;
+  fetch(GEOJSON_FILE)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
       }
+      return response.json();
+    })
+    .then(data => {
+
+      geoData = data;
+
+      if (!geoData || !geoData.features) {
+        throw new Error('Invalid GeoJSON structure');
+      }
+
+      const filteredFeatures = geoData.features;
+
+      dataYearMin = Infinity;
+      dataYearMax = -Infinity;
+
+      features.forEach(f => {
+
+        const y = Number(f.properties['Publication Year']);
+
+        if (!isNaN(y)) {
+          if (y < dataYearMin) dataYearMin = y;
+          if (y > dataYearMax) dataYearMax = y;
+        }
+      });
+
+      if (!isFinite(dataYearMin)) dataYearMin = 1900;
+      if (!isFinite(dataYearMax)) dataYearMax = new Date().getFullYear();
+
+      initRangeSliders();
+
+      updateStats(filteredFeatures, filteredFeatures);
+
+      applyFilters();
+
+      document
+        .getElementById('loadingOverlay')
+        .classList.add('hidden');
+    })
+    .catch(err => {
+
+      console.error('GeoJSON loading error:', err);
+
+      const overlay = document.getElementById('loadingOverlay');
+
+      overlay.innerHTML = `
+        <div style="padding:20px; text-align:center; color:#fff;">
+          <h2>Failed to load GeoJSON</h2>
+          <p>${err.message}</p>
+          <p>Expected file:</p>
+          <code>${GEOJSON_FILE}</code>
+        </div>
+      `;
     });
-
-    initRangeSliders();
-    updateStats(features, features);
-    applyFilters();
-
-    document.getElementById('loadingOverlay').classList.add('hidden');
-  })
-  .catch(err => {
-    const overlay = document.getElementById('loadingOverlay');
-    overlay.querySelector('.spinner').style.display = 'none';
-    document.getElementById('loadingText').style.display = 'none';
-    overlay.insertAdjacentHTML('beforeend',
-      `<div class="error-msg">
-        ⚠ Failed to load <code>${GEOJSON_FILE}</code><br><br>
-        Make sure the GeoJSON file is in the <strong>same folder</strong> as this HTML file
-        and you are serving it via a local server (e.g. <code>python -m http.server</code>).
-        <br><br><small>${err.message}</small>
-      </div>`
-    );
-  });
+}
 
 /* ── RANGE SLIDERS ── */
 function initRangeSliders() {
@@ -611,95 +660,137 @@ function onLiveInput() { if (liveFilter) applyFilters(); }
 
 /* ── FILTERS ── */
 function applyFilters() {
-  if (!geoData) return;
 
-  const speciesQ  = document.getElementById('speciesSearch').value.toLowerCase().trim();
-  const locationQ = document.getElementById('locationSearch').value.toLowerCase().trim();
-  const titleQ    = document.getElementById('titleSearch').value.toLowerCase().trim();
-  const yearMin   = document.getElementById('yearMin').value ? +document.getElementById('yearMin').value : dataYearMin;
-  const yearMax   = document.getElementById('yearMax').value ? +document.getElementById('yearMax').value : dataYearMax;
-  const sampleMin = document.getElementById('sampleMin').value ? +document.getElementById('sampleMin').value : null;
-  const sampleMax = document.getElementById('sampleMax').value ? +document.getElementById('sampleMax').value : null;
+  if (!geoData || !geoData.features) return;
 
-  filteredFeatures = geoData.features.filter(f => {
-    const p = f.properties;
+  const speciesInput = document.getElementById('speciesSearch');
+  const locationInput = document.getElementById('locationSearch');
 
-    const matchSpecies = selectedSpecies.size > 0
-      ? selectedSpecies.has(p['species'])
-      : (!speciesQ || (p['species'] || '').toLowerCase().includes(speciesQ));
+  const speciesSearch = speciesInput
+    ? speciesInput.value.toLowerCase().trim()
+    : '';
 
-    const matchLocation = selectedLocations.size > 0
-      ? selectedLocations.has(p['Location'])
-      : (!locationQ || (p['Location'] || '').toLowerCase().includes(locationQ));
+  const locationSearch = locationInput
+    ? locationInput.value.toLowerCase().trim()
+    : '';
 
-    const matchTitle = !titleQ || (p['Title'] || '').toLowerCase().includes(titleQ);
+  const yearMin = Number(document.getElementById('yearMin').value);
+  const yearMax = Number(document.getElementById('yearMax').value);
 
-    const year = +p['Publication Year'];
-    const matchYear = year >= yearMin && year <= yearMax;
+  const filteredFeatures = geoData.features.filter(feature => {
 
-    const n = +p['Sample Size'];
-    const matchSample = (sampleMin === null || n >= sampleMin) &&
-                        (sampleMax === null || n <= sampleMax);
+    const props = feature.properties || {};
 
-    return matchSpecies && matchLocation && matchTitle && matchYear && matchSample;
+    const species = String(props.Species || '').toLowerCase();
+
+    const location = String(
+      props.Location ||
+      props.Country ||
+      props.City ||
+      ''
+    ).toLowerCase();
+
+    const year = Number(props['Publication Year']);
+
+    const speciesMatch =
+      !speciesSearch || species.includes(speciesSearch);
+
+    const locationMatch =
+      !locationSearch || location.includes(locationSearch);
+
+    const yearMatch =
+      isNaN(year)
+        ? true
+        : (year >= yearMin && year <= yearMax);
+
+    return speciesMatch && locationMatch && yearMatch;
   });
 
   updateMap(filteredFeatures);
-  updateStats(geoData.features, filteredFeatures);
-
-  const hasFilters = speciesQ || locationQ || titleQ ||
-    selectedSpecies.size > 0 || selectedLocations.size > 0 ||
-    document.getElementById('yearMin').value || document.getElementById('yearMax').value ||
-    document.getElementById('sampleMin').value || document.getElementById('sampleMax').value;
-  document.getElementById('clearTopBtn').style.display = hasFilters ? 'inline-flex' : 'none';
-
-  const sn = document.getElementById('sampleMin').value || '—';
-  const sx = document.getElementById('sampleMax').value || '—';
-  document.getElementById('sampleBadge').textContent =
-    (sn === '—' && sx === '—') ? 'all' : `${sn} – ${sx}`;
+  updateStats(filteredFeatures, geoData.features);
 }
 
 /* ── MAP UPDATE ── */
 function updateMap(features) {
-  clusterGroup.clearLayers();
-  const noData = document.getElementById('noData');
 
-  if (!features.length) { noData.classList.add('visible'); return; }
-  noData.classList.remove('visible');
+  console.log("Rendering features:", features.length);
 
-  const layer = L.geoJSON({ type: 'FeatureCollection', features }, {
-    pointToLayer(feature, latlng) {
+  if (mapLayer) {
+    map.removeLayer(mapLayer);
+  }
+
+  // Remove invalid geometries
+  const validFeatures = features.filter(f => {
+
+    if (!f.geometry) return false;
+
+    if (f.geometry.type !== "Point") return false;
+
+    if (!Array.isArray(f.geometry.coordinates)) return false;
+
+    if (f.geometry.coordinates.length < 2) return false;
+
+    const lon = Number(f.geometry.coordinates[0]);
+    const lat = Number(f.geometry.coordinates[1]);
+
+    if (isNaN(lat) || isNaN(lon)) return false;
+
+    if (lat < -90 || lat > 90) return false;
+
+    if (lon < -180 || lon > 180) return false;
+
+    return true;
+  });
+
+  console.log("Valid features:", validFeatures.length);
+
+  const featureCollection = {
+    type: "FeatureCollection",
+    features: validFeatures
+  };
+
+  mapLayer = L.geoJSON(featureCollection, {
+
+    pointToLayer: function(feature, latlng) {
+
       return L.circleMarker(latlng, {
-        radius: 7,
-        fillColor: '#58a6ff',
-        color: '#0d1117',
-        weight: 1.5,
-        fillOpacity: 0.85
+        radius: 4,
+        fillColor: "#1976d2",
+        color: "#ffffff",
+        weight: 1,
+        opacity: 1,
+        fillOpacity: 0.7
       });
     },
-    onEachFeature(feature, layer) {
-      const p = feature.properties;
-      const doi = p['DOI'] && p['DOI'] !== 'NA'
-        ? `<a class="popup-doi" href="https://doi.org/${p['DOI']}" target="_blank">View DOI ↗</a>`
-        : '';
+
+    onEachFeature: function(feature, layer) {
+
+      const props = feature.properties || {};
+
       layer.bindPopup(`
-        <div class="popup-species">${p['species'] || 'Unknown species'}</div>
-        <div style="font-size:12px;color:#8b949e;margin-bottom:6px;line-height:1.4;">${p['Title'] || ''}</div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;">
-          <span style="font-family:'DM Mono',monospace;font-size:11px;color:#58a6ff;">
-            📅 ${p['Publication Year'] ? Math.round(p['Publication Year']) : '—'}
-          </span>
-          ${p['Sample Size'] ? `<span style="font-family:'DM Mono',monospace;font-size:11px;color:#f0883e;">n = ${p['Sample Size']}</span>` : ''}
-          ${p['Location']    ? `<span style="font-family:'DM Mono',monospace;font-size:11px;color:#bc8cff;">📍 ${p['Location']}</span>` : ''}
+        <div style="max-width:250px">
+          <strong>${props.Title || "Untitled"}</strong><br>
+          <b>Species:</b> ${props.Species || "N/A"}<br>
+          <b>Location:</b> ${props.Location || "N/A"}<br>
+          <b>Year:</b> ${props["Publication Year"] || "N/A"}
         </div>
-        ${doi}
-      `, { maxWidth: 280 });
+      `);
     }
   });
 
-  clusterGroup.addLayer(layer);
-  try { map.fitBounds(clusterGroup.getBounds(), { padding: [40, 40], maxZoom: 10 }); }
-  catch(e) {}
+  mapLayer.addTo(map);
+
+  if (validFeatures.length > 0) {
+
+    const bounds = mapLayer.getBounds();
+
+    if (bounds.isValid()) {
+
+      map.fitBounds(bounds, {
+        padding: [20, 20]
+      });
+    }
+  }
 }
 
 /* ── STATS ── */
