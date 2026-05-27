@@ -1,0 +1,63 @@
+name: MOVEdb Submission
+description: Submit a new MOVEdb study record
+title: "[DATA SUBMISSION]: "
+labels: ["submission"]
+
+body:
+
+  - type: input
+    id: study_title
+    attributes:
+      label: Study Title
+    validations:
+      required: true
+
+  - type: input
+    id: species
+    attributes:
+      label: Species
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: Location
+
+  - type: input
+    id: country
+    attributes:
+      label: Country
+    validations:
+      required: true
+
+  - type: input
+    id: publication_year
+    attributes:
+      label: Publication Year
+    validations:
+      required: true
+
+  - type: input
+    id: latitude
+    attributes:
+      label: Latitude
+    validations:
+      required: true
+
+  - type: input
+    id: longitude
+    attributes:
+      label: Longitude
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+
+  - type: input
+    id: source
+    attributes:
+      label: Source URL or DOI
