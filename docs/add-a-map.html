@@ -14,20 +14,172 @@
 </nav>
 
 <div class="container mt-4">
-  <h2>Methods</h2>
+  <h2>Submit Data</h2>
 
   <p>
-    We try to update the map regularly with the updated data, but if you think any study are missing then please feel free to add your data here with the column headers, <br>
-    "Title" : Title of the study <br>
-    "DOI" : Digital Object Identifier of the study   <br>
-    "Publication Year":  Year of Publication<br>
-    "Sample Size" : Number of Tagged Individuals   <br>
-    "Location"  : Name of the study location <br>
-    "species" : Latin name of the study species<br>
-    "Latitude" : Latitude of the study location <br>
-    "Longitude" : Longitude of the study location <br>
-  </p>
+    We try to update the map regularly with the updated data, but if you think any study are missing then please feel free to add your data here with the form below. <br>
+   </p>
+  
+  <div class="notice">
+Submissions are reviewed before inclusion in the public dataset.
+Your submission will NOT directly modify the live GeoJSON map.
 </div>
+
+<p class="subtitle">
+Use this form to contribute movement ecology studies, tracking records,
+or geospatial metadata relevant to Movedb. Headers marked with (*) are mandatory.
+</p>
+
+<form id="submissionForm">
+
+  <div class="form-group">
+    <label>Study Title *</label>
+    <input type="text" id="title" required>
+  </div>
+
+  <div class="form-group">
+    <label>Species (Latin name of the study species)*</label>
+    <input type="text" id="species" required>
+  </div>
+
+  <div class="form-group">
+    <label>Location</label>
+    <input type="text" id="location">
+  </div>
+
+  <div class="form-group">
+    <label>Country/Territory *</label>
+    <input type="text" id="country">
+  </div>
+
+  <div class="form-group">
+    <label>Publication Year *</label>
+    <input type="number" id="year">
+  </div>
+
+  <div class="form-group">
+    <label>Latitude *</label>
+    <input type="number" step="any" id="latitude" required>
+  </div>
+
+  <div class="form-group">
+    <label>Longitude *</label>
+    <input type="number" step="any" id="longitude" required>
+  </div>
+
+  <div class="form-group">
+    <label>Source URL / DOI *</label>
+    <input type="text" id="source">
+  </div>
+
+  <div class="form-group">
+    <label>Notes</label>
+    <textarea id="notes"></textarea>
+  </div>
+
+  <button type="submit">
+    Prepare GitHub Submission
+  </button>
+
+</form>
+</div>
+
+<script>
+
+document
+  .getElementById('submissionForm')
+  .addEventListener('submit', function(e){
+
+    e.preventDefault();
+
+    const title =
+      document.getElementById('title').value.trim();
+
+    const species =
+      document.getElementById('species').value.trim();
+
+    const location =
+      document.getElementById('location').value.trim();
+
+    const country =
+      document.getElementById('country').value.trim();
+
+    const year =
+      document.getElementById('year').value.trim();
+
+    const latitude =
+      document.getElementById('latitude').value.trim();
+
+    const longitude =
+      document.getElementById('longitude').value.trim();
+
+    const source =
+      document.getElementById('source').value.trim();
+
+    const notes =
+      document.getElementById('notes').value.trim();
+
+    // coordinate validation
+    if(latitude < -90 || latitude > 90){
+      alert('Latitude must be between -90 and 90');
+      return;
+    }
+
+    if(longitude < -180 || longitude > 180){
+      alert('Longitude must be between -180 and 180');
+      return;
+    }
+
+    const issueTitle =
+      encodeURIComponent(
+        `[DATA SUBMISSION] ${species}`
+      );
+
+    const issueBody = encodeURIComponent(
+
+`## MOVEdb Submission
+
+### Study Title
+${title}
+
+### Species
+${species}
+
+### Location
+${location}
+
+### Country
+${country}
+
+### Publication Year
+${year}
+
+### Latitude
+${latitude}
+
+### Longitude
+${longitude}
+
+### Source URL / DOI
+${source}
+
+### Notes
+${notes}
+
+---
+
+Submitted via MOVEdb submission form.
+`
+    );
+
+    const githubURL =
+      `https://github.com/nilanjanchatterjee/movedb/issues/new?title=${issueTitle}&body=${issueBody}`;
+
+    window.open(githubURL, '_blank');
+
+});
+
+</script>
 
 </body>
 </html>

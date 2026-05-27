@@ -60,7 +60,7 @@ html_content <- sprintf('
 <div class="container text-center mt-4">
 
   <a href="introduction.html" class="btn btn-primary m-2">About</a>
-  <a href="explorer.html" class="btn btn-primary m-2">Explore Data</a>
+  <a href="explorer_fixed.html" class="btn btn-primary m-2">Explore Data</a>
   <a href="resources.html" class="btn btn-primary m-2">Methods</a>
   <a href="add-a-map.html" class="btn btn-primary m-2">Add your data</a>
   <a href="https://github.com/nilanjanchatterjee" class="btn btn-outline-dark m-2">GitHub</a>
@@ -78,7 +78,7 @@ html_content <- sprintf('
 <head>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <style> #map { height: 800px; width: 100%%; } </style>
+  <style> #map { height: 900px; width: 100%%; } </style>
 </head>
 <body>
   <div id="map"></div>
@@ -86,7 +86,7 @@ html_content <- sprintf('
     var geojsonData = %s;   // ← GeoJSON injected by R here
     
     // --- Base map ---
-    var map = L.map("map").setView([0, 0], 8);
+    var map = L.map("map").setView([0, 0], 9);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "© OpenStreetMap contributors"
     }).addTo(map);

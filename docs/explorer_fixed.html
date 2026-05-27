@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Explore Research Data</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css"/>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --bg2: #161b22;
+      --bg3: #1c2330;
+      --border: rgba(255,255,255,0.07);
+      --border2: rgba(255,255,255,0.13);
+      --text: #e6edf3;
+      --text2: #8b949e;
+      --text3: #6e7681;
+      --accent: #3fb950;
+      --accent2: #58a6ff;
+      --accent3: #f0883e;
+      --accent4: #bc8cff;
+      --danger: #f85149;
+      --card-radius: 10px;
+      --sidebar-w: 320px;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── TOPBAR ── */
+    .topbar {
+      height: 52px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 16px;
+      flex-shrink: 0;
+      z-index: 100;
+    }
+    .topbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--accent);
+      letter-spacing: 0.04em;
+      text-decoration: none;
+    }
+    .topbar-brand .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 2.4s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+    .topbar-divider { width: 1px; height: 24px; background: var(--border2); }
+    .topbar-title { font-size: 14px; color: var(--text2); font-weight: 400; }
+    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+
+    .chip {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--border2);
+      color: var(--text2);
+      background: transparent;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+    .chip:hover { border-color: var(--accent2); color: var(--accent2); }
+    .chip.active { background: rgba(88,166,255,0.12); border-color: var(--accent2); color: var(--accent2); }
+    .chip-danger { border-color: rgba(248,81,73,0.4); color: var(--danger); }
+    .chip-danger:hover { background: rgba(248,81,73,0.1); }
+
+    /* ── LOADING OVERLAY ── */
+    #loadingOverlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(13,17,23,0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      gap: 14px;
+    }
+    #loadingOverlay.hidden { display: none; }
+    .spinner {
+      width: 32px; height: 32px;
+      border: 2px solid var(--border2);
+      border-top-color: var(--accent2);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      color: var(--text3);
+    }
+    .error-msg {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      color: var(--danger);
+      text-align: center;
+      max-width: 340px;
+      line-height: 1.6;
+    }
+
+    /* ── MAIN LAYOUT ── */
+    .main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      flex-shrink: 0;
+      transition: width 0.25s ease;
+    }
+    .sidebar.collapsed { width: 0; }
+
+    .sidebar-inner {
+      padding: 16px;
+      overflow-y: auto;
+      flex: 1;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border2) transparent;
+    }
+
+    /* ── STATS STRIP ── */
+    .stats-strip {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--card-radius);
+      padding: 10px 12px;
+    }
+    .stat-label {
+      font-size: 10px;
+      font-family: 'DM Mono', monospace;
+      color: var(--text3);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .stat-value {
+      font-family: 'DM Mono', monospace;
+      font-size: 22px;
+      font-weight: 500;
+      color: var(--text);
+      line-height: 1;
+    }
+    .stat-value.green  { color: var(--accent); }
+    .stat-value.blue   { color: var(--accent2); }
+    .stat-value.orange { color: var(--accent3); }
+    .stat-value.purple { color: var(--accent4); }
+
+    /* ── FILTER SECTION ── */
+    .filter-section { margin-bottom: 18px; }
+    .filter-label {
+      font-size: 10px;
+      font-family: 'DM Mono', monospace;
+      color: var(--text3);
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .filter-label .count-badge {
+      background: rgba(88,166,255,0.15);
+      color: var(--accent2);
+      border-radius: 10px;
+      padding: 1px 7px;
+      font-size: 10px;
+    }
+
+    input[type="text"], input[type="number"], select {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: 7px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      padding: 8px 12px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    select:focus { border-color: var(--accent2); }
+    input::placeholder { color: var(--text3); }
+    select option { background: var(--bg3); }
+
+    .year-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    .range-wrap { margin-top: 8px; }
+    .range-labels {
+      display: flex;
+      justify-content: space-between;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--text3);
+      margin-bottom: 4px;
+    }
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent2);
+      background: transparent;
+      cursor: pointer;
+    }
+
+    /* ── APPLY / CLEAR ── */
+    .btn-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 4px; }
+    .btn-apply {
+      background: var(--accent2);
+      color: #0d1117;
+      border: none;
+      border-radius: 7px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 9px 16px;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn-apply:hover { opacity: 0.88; }
+    .btn-apply:active { transform: scale(0.98); }
+    .btn-clear {
+      background: transparent;
+      border: 1px solid var(--border2);
+      border-radius: 7px;
+      color: var(--text2);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      padding: 9px 14px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-clear:hover { border-color: var(--danger); color: var(--danger); }
+
+    /* ── RESULT BAR ── */
+    .result-bar {
+      padding: 8px 16px;
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text3);
+      font-family: 'DM Mono', monospace;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .result-bar .hl { color: var(--accent); font-weight: 500; }
+
+    .btn-export {
+      margin-left: auto;
+      background: transparent;
+      border: 1px solid var(--border2);
+      border-radius: 6px;
+      color: var(--text2);
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      padding: 4px 12px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-export:hover { border-color: var(--accent3); color: var(--accent3); }
+
+    /* ── MAP ── */
+    .map-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    #map { flex: 1; }
+
+    /* ── LEAFLET OVERRIDES ── */
+    .leaflet-container { background: #0a0e14 !important; }
+    .leaflet-popup-content-wrapper {
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      color: var(--text);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+      font-family: 'DM Sans', sans-serif;
+    }
+    .leaflet-popup-tip { background: var(--bg2); }
+    .leaflet-popup-content { font-size: 13px; line-height: 1.6; }
+    .popup-species { font-weight: 500; font-size: 14px; color: var(--accent); margin-bottom: 4px; }
+    .popup-doi { display: inline-block; margin-top: 6px; font-size: 11px; color: var(--accent2); text-decoration: none; border-bottom: 1px solid rgba(88,166,255,0.3); }
+    .popup-doi:hover { border-color: var(--accent2); }
+
+    /* ── SIDEBAR TOGGLE ── */
+    .toggle-btn {
+      position: absolute;
+      top: 8px;
+      left: 308px;
+      z-index: 500;
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: 0 6px 6px 0;
+      color: var(--text2);
+      width: 22px;
+      height: 40px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      transition: left 0.25s ease, color 0.15s;
+    }
+    .toggle-btn:hover { color: var(--text); }
+    .toggle-btn.collapsed-btn { left: 0px; }
+
+    /* ── NO DATA ── */
+    .no-data {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      pointer-events: none;
+      z-index: 400;
+      display: none;
+    }
+    .no-data.visible { display: block; }
+    .no-data-icon { font-size: 40px; margin-bottom: 8px; opacity: 0.3; }
+    .no-data p { color: var(--text3); font-size: 13px; }
+  </style>
+</head>
+<body>
+
+<nav class="topbar">
+  <a href="index.html" class="topbar-brand">
+    <span class="dot"></span>
+    BIOMAP
+  </a>
+  <div class="topbar-divider"></div>
+  <span class="topbar-title">Spatial Explorer</span>
+  <div class="topbar-right">
+    <span class="chip active" id="liveChip" onclick="toggleLive()">● live filter</span>
+    <span class="chip chip-danger" id="clearTopBtn" onclick="clearAll()" style="display:none">clear all</span>
+  </div>
+</nav>
+
+<div class="main">
+
+  <div id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loadingText">Loading data…</div>
+  </div>
+
+  <button class="toggle-btn" id="toggleBtn" onclick="toggleSidebar()" title="Toggle sidebar">‹</button>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-inner">
+
+      <div class="stats-strip">
+        <div class="stat-card">
+          <div class="stat-label">total records</div>
+          <div class="stat-value green" id="statTotal">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">showing</div>
+          <div class="stat-value blue" id="statShowing">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">species</div>
+          <div class="stat-value orange" id="statSpecies">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">locations</div>
+          <div class="stat-value purple" id="statLocations">—</div>
+        </div>
+      </div>
+
+      <!-- SPECIES -->
+      <div class="filter-section">
+        <div class="filter-label">Species</div>
+        <input type="text" id="speciesSearch" placeholder="Search species…" oninput="onLiveInput()">
+      </div>
+
+      <!-- LOCATION -->
+      <div class="filter-section">
+        <div class="filter-label">Location</div>
+        <input type="text" id="locationSearch" placeholder="Search location…" oninput="onLiveInput()">
+      </div>
+
+      <!-- YEAR RANGE -->
+      <div class="filter-section">
+        <div class="filter-label">
+          Publication year
+          <span class="count-badge" id="yearBadge">all years</span>
+        </div>
+        <div class="year-row">
+          <input type="number" id="yearMin" placeholder="From" oninput="syncRangeFromInput(); onLiveInput();">
+          <input type="number" id="yearMax" placeholder="To"   oninput="syncRangeFromInput(); onLiveInput();">
+        </div>
+        <div class="range-wrap">
+          <div class="range-labels">
+            <span id="rangeMinLbl">—</span>
+            <span id="rangeMaxLbl">—</span>
+          </div>
+          <input type="range" id="yearRangeMin" oninput="syncInputFromRange('min')">
+          <input type="range" id="yearRangeMax" oninput="syncInputFromRange('max')">
+        </div>
+      </div>
+
+      <!-- TITLE -->
+      <div class="filter-section">
+        <div class="filter-label">Title keyword</div>
+        <input type="text" id="titleSearch" placeholder="Search by title keyword…" oninput="onLiveInput()">
+      </div>
+
+      <!-- SAMPLE SIZE -->
+      <div class="filter-section">
+        <div class="filter-label">
+          Sample size
+          <span class="count-badge" id="sampleBadge">all</span>
+        </div>
+        <div class="year-row">
+          <input type="number" id="sampleMin" placeholder="Min n" oninput="onLiveInput()">
+          <input type="number" id="sampleMax" placeholder="Max n" oninput="onLiveInput()">
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-apply" onclick="applyFilters()">Apply filters</button>
+        <button class="btn-clear" onclick="clearAll()">Clear</button>
+      </div>
+
+    </div>
+
+    <div class="result-bar">
+      <span>Showing <span class="hl" id="resultCount">—</span> records</span>
+      <button class="btn-export" onclick="exportCSV()">↓ CSV</button>
+    </div>
+  </aside>
+
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div class="no-data" id="noData">
+      <div class="no-data-icon">◎</div>
+      <p>No records match your filters</p>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+
+<script>
+/* ── CONFIGURATION ── */
+const GEOJSON_FILE = 'study_df_new.geojson';
+
+/* ── STATE ──
+   FIX 4: declare mapLayer here so updateMap can reference it */
+let geoData          = null;
+let filteredFeatures = [];   // module-level; never shadow with const inside a function
+let mapLayer         = null; // FIX 4: was missing entirely
+let liveFilter       = true;
+let sidebarOpen      = true;
+let dataYearMin      = Infinity;
+let dataYearMax      = -Infinity;
+
+/* ── MAP ── */
+const map = L.map('map', { zoomControl: false }).setView([20, 0], 2);
+L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '© OpenStreetMap © CARTO',
+  maxZoom: 19
+}).addTo(map);
+
+const clusterGroup = L.markerClusterGroup({
+  maxClusterRadius: 60,
+  disableClusteringAtZoom: 14,
+  spiderfyOnMaxZoom: true,
+  showCoverageOnHover: false,
+  zoomToBoundsOnClick: true,
+  iconCreateFunction(cluster) {
+    const n     = cluster.getChildCount();
+    const size  = n < 10 ? 34 : n < 50 ? 42 : 52;
+    const color = n < 10 ? '#3fb950' : n < 50 ? '#58a6ff' : '#f0883e';
+    return L.divIcon({
+      html: `<div style="width:${size}px;height:${size}px;border-radius:50%;
+               background:${color}22;border:1.5px solid ${color};
+               display:flex;align-items:center;justify-content:center;
+               color:${color};font-family:'DM Mono',monospace;
+               font-size:12px;font-weight:500;">${n}</div>`,
+      className: '',
+      iconSize: [size, size]
+    });
+  }
+});
+clusterGroup.addTo(map);
+
+/* ── FETCH GEOJSON ── */
+function initData() {
+  fetch(GEOJSON_FILE)
+    .then(response => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    })
+    .then(data => {
+      geoData = data;
+
+      if (!geoData || !geoData.features) throw new Error('Invalid GeoJSON structure');
+
+      /* FIX 2+3: iterate geoData.features directly — no local shadowing variable */
+      geoData.features.forEach(f => {
+        const y = Number(f.properties['Publication Year']);
+        if (!isNaN(y)) {
+          if (y < dataYearMin) dataYearMin = y;
+          if (y > dataYearMax) dataYearMax = y;
+        }
+      });
+
+      if (!isFinite(dataYearMin)) dataYearMin = 1900;
+      if (!isFinite(dataYearMax)) dataYearMax = new Date().getFullYear();
+
+      initRangeSliders();
+      applyFilters(); // this sets filteredFeatures and calls updateStats + updateMap
+      document.getElementById('loadingOverlay').classList.add('hidden');
+    })
+    .catch(err => {
+      console.error('GeoJSON load error:', err);
+      document.getElementById('loadingOverlay').innerHTML = `
+        <div class="error-msg">
+          ⚠ Failed to load <code style="color:#f0883e">${GEOJSON_FILE}</code><br><br>
+          Make sure the file is committed to the same folder as this HTML in your GitHub repo.<br><br>
+          <small>${err.message}</small>
+        </div>`;
+    });
+}
+
+/* ── RANGE SLIDERS ── */
+function initRangeSliders() {
+  const rMin = document.getElementById('yearRangeMin');
+  const rMax = document.getElementById('yearRangeMax');
+  rMin.min = rMax.min = dataYearMin;
+  rMin.max = rMax.max = dataYearMax;
+  rMin.value = dataYearMin;
+  rMax.value = dataYearMax;
+  document.getElementById('rangeMinLbl').textContent = dataYearMin;
+  document.getElementById('rangeMaxLbl').textContent = dataYearMax;
+  document.getElementById('yearMin').placeholder = dataYearMin;
+  document.getElementById('yearMax').placeholder = dataYearMax;
+  document.getElementById('yearBadge').textContent = `${dataYearMin} – ${dataYearMax}`;
+}
+
+function syncInputFromRange(which) {
+  let rMin = +document.getElementById('yearRangeMin').value;
+  let rMax = +document.getElementById('yearRangeMax').value;
+  if (which === 'min' && rMin > rMax) { rMin = rMax; document.getElementById('yearRangeMin').value = rMin; }
+  if (which === 'max' && rMax < rMin) { rMax = rMin; document.getElementById('yearRangeMax').value = rMax; }
+  document.getElementById('yearMin').value = rMin;
+  document.getElementById('yearMax').value = rMax;
+  document.getElementById('rangeMinLbl').textContent = rMin;
+  document.getElementById('rangeMaxLbl').textContent = rMax;
+  document.getElementById('yearBadge').textContent = `${rMin} – ${rMax}`;
+  onLiveInput();
+}
+
+function syncRangeFromInput() {
+  const mn = document.getElementById('yearMin').value || dataYearMin;
+  const mx = document.getElementById('yearMax').value || dataYearMax;
+  document.getElementById('yearRangeMin').value = mn;
+  document.getElementById('yearRangeMax').value = mx;
+  document.getElementById('rangeMinLbl').textContent = mn;
+  document.getElementById('rangeMaxLbl').textContent = mx;
+  document.getElementById('yearBadge').textContent = `${mn} – ${mx}`;
+}
+
+/* ── LIVE / APPLY ── */
+function toggleLive() {
+  liveFilter = !liveFilter;
+  document.getElementById('liveChip').classList.toggle('active', liveFilter);
+}
+function onLiveInput() { if (liveFilter) applyFilters(); }
+
+/* ── FILTERS ── */
+function applyFilters() {
+  if (!geoData || !geoData.features) return;
+
+  const speciesQ  = (document.getElementById('speciesSearch').value  || '').toLowerCase().trim();
+  const locationQ = (document.getElementById('locationSearch').value || '').toLowerCase().trim();
+  const titleQ    = (document.getElementById('titleSearch').value    || '').toLowerCase().trim();
+  const sampleMin = document.getElementById('sampleMin').value ? +document.getElementById('sampleMin').value : null;
+  const sampleMax = document.getElementById('sampleMax').value ? +document.getElementById('sampleMax').value : null;
+
+  const yearMinVal = document.getElementById('yearMin').value ? +document.getElementById('yearMin').value : dataYearMin;
+  const yearMaxVal = document.getElementById('yearMax').value ? +document.getElementById('yearMax').value : dataYearMax;
+
+  /* FIX 2: assign to the module-level variable, not a new local const */
+  filteredFeatures = geoData.features.filter(f => {
+    const p = f.properties || {};
+
+    /* FIX 5: use lowercase 'species' — matches actual GeoJSON property key */
+    const matchSpecies  = !speciesQ  || (p['species']  || '').toLowerCase().includes(speciesQ);
+    const matchLocation = !locationQ || (p['Location'] || '').toLowerCase().includes(locationQ);
+    const matchTitle    = !titleQ    || (p['Title']    || '').toLowerCase().includes(titleQ);
+
+    const year = Number(p['Publication Year']);
+    const matchYear = isNaN(year) || (year >= yearMinVal && year <= yearMaxVal);
+
+    const n = Number(p['Sample Size']);
+    const matchSample = (sampleMin === null || n >= sampleMin) &&
+                        (sampleMax === null || n <= sampleMax);
+
+    return matchSpecies && matchLocation && matchTitle && matchYear && matchSample;
+  });
+
+  updateMap(filteredFeatures);
+
+  /* FIX 6: correct argument order — (all, filtered) */
+  updateStats(geoData.features, filteredFeatures);
+
+  const hasFilters = speciesQ || locationQ || titleQ ||
+    document.getElementById('yearMin').value || document.getElementById('yearMax').value ||
+    document.getElementById('sampleMin').value || document.getElementById('sampleMax').value;
+  document.getElementById('clearTopBtn').style.display = hasFilters ? 'inline-flex' : 'none';
+
+  const sn = document.getElementById('sampleMin').value || '—';
+  const sx = document.getElementById('sampleMax').value || '—';
+  document.getElementById('sampleBadge').textContent =
+    (sn === '—' && sx === '—') ? 'all' : `${sn} – ${sx}`;
+}
+
+/* ── MAP UPDATE ── */
+function updateMap(features) {
+  clusterGroup.clearLayers();
+
+  const noData = document.getElementById('noData');
+  if (!features.length) { noData.classList.add('visible'); return; }
+  noData.classList.remove('visible');
+
+  const validFeatures = features.filter(f => {
+    if (!f.geometry || f.geometry.type !== 'Point') return false;
+    const [lon, lat] = f.geometry.coordinates;
+    return !isNaN(lat) && !isNaN(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
+  });
+
+  const layer = L.geoJSON({ type: 'FeatureCollection', features: validFeatures }, {
+    pointToLayer(feature, latlng) {
+      return L.circleMarker(latlng, {
+        radius: 7,
+        fillColor: '#58a6ff',
+        color: '#0d1117',
+        weight: 1.5,
+        fillOpacity: 0.85
+      });
+    },
+    onEachFeature(feature, layer) {
+      const p = feature.properties || {};
+      const doi = p['DOI'] && p['DOI'] !== 'NA'
+        ? `<a class="popup-doi" href="https://doi.org/${p['DOI']}" target="_blank">View DOI ↗</a>`
+        : '';
+      layer.bindPopup(`
+        <div class="popup-species">${p['species'] || 'Unknown species'}</div>
+        <div style="font-size:12px;color:#8b949e;margin-bottom:6px;line-height:1.4;">${p['Title'] || ''}</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;">
+          <span style="font-family:'DM Mono',monospace;font-size:11px;color:#58a6ff;">
+            📅 ${p['Publication Year'] ? Math.round(p['Publication Year']) : '—'}
+          </span>
+          ${p['Sample Size'] ? `<span style="font-family:'DM Mono',monospace;font-size:11px;color:#f0883e;">n = ${p['Sample Size']}</span>` : ''}
+          ${p['Location']    ? `<span style="font-family:'DM Mono',monospace;font-size:11px;color:#bc8cff;">📍 ${p['Location']}</span>` : ''}
+        </div>
+        ${doi}
+      `, { maxWidth: 280 });
+    }
+  });
+
+  clusterGroup.addLayer(layer);
+  try { map.fitBounds(clusterGroup.getBounds(), { padding: [40, 40], maxZoom: 10 }); }
+  catch(e) {}
+}
+
+/* ── STATS ── */
+function updateStats(all, filtered) {
+  document.getElementById('statTotal').textContent    = all.length.toLocaleString();
+  document.getElementById('statShowing').textContent  = filtered.length.toLocaleString();
+  document.getElementById('statSpecies').textContent  =
+    new Set(filtered.map(f => f.properties['species']).filter(Boolean)).size.toLocaleString();
+  document.getElementById('statLocations').textContent =
+    new Set(filtered.map(f => f.properties['Location']).filter(Boolean)).size.toLocaleString();
+  document.getElementById('resultCount').textContent  = filtered.length.toLocaleString();
+}
+
+/* ── CLEAR ── */
+function clearAll() {
+  ['speciesSearch','locationSearch','titleSearch','yearMin','yearMax','sampleMin','sampleMax']
+    .forEach(id => document.getElementById(id).value = '');
+  if (geoData) initRangeSliders();
+  document.getElementById('sampleBadge').textContent = 'all';
+  document.getElementById('clearTopBtn').style.display = 'none';
+  applyFilters();
+}
+
+/* ── EXPORT CSV ── */
+function exportCSV() {
+  /* FIX 2 side-effect: filteredFeatures is now always up-to-date */
+  if (!filteredFeatures.length) return;
+  const keys = Object.keys(filteredFeatures[0].properties);
+  const rows = [keys.join(',')];
+  filteredFeatures.forEach(f => {
+    rows.push(keys.map(k => JSON.stringify(f.properties[k] ?? '')).join(','));
+  });
+  const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `filtered_records_${Date.now()}.csv`;
+  a.click();
+}
+
+/* ── SIDEBAR ── */
+function toggleSidebar() {
+  sidebarOpen = !sidebarOpen;
+  document.getElementById('sidebar').classList.toggle('collapsed', !sidebarOpen);
+  const btn = document.getElementById('toggleBtn');
+  btn.textContent = sidebarOpen ? '‹' : '›';
+  btn.classList.toggle('collapsed-btn', !sidebarOpen);
+  setTimeout(() => map.invalidateSize(), 260);
+}
+
+/* ── BOOT ──
+   FIX 1: actually call initData() so the fetch runs on page load */
+initData();
+</script>
+
+</body>
+</html>
