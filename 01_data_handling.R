@@ -6,7 +6,7 @@ data_df <- readRDS("Final_summary_data_1005.rds")
 data_df1 <- readRDS("data_mammal_taxclean_2.rds")
 
 
-data_df_exp <- data_df |> 
+data_df_exp <- data_df1 |> 
   mutate(Latitude_reported = as.character(Latitude_reported),
          Longitude_reported = as.character(Longitude_reported)) |> # --- Split semicolon-separated values into multiple rows ---
   separate_rows(Latitude_reported, Longitude_reported, sep = ";") |>       # Split & expand into multiple rows
@@ -14,16 +14,16 @@ data_df_exp <- data_df |>
          long = as.numeric(Longitude_reported))        # Convert back to numeric after splitting
 
 data_df_loc_filter <- data_df_exp |> filter(!is.na(lat) & !is.na(long)) |>
-  select(c(Title, DOI, `Publication Year`, `Sample Size`, Location, lat, long, species_ncbi)) |>
+  select(c(Title, DOI, `Publication Year`, `Sample Size`, Location, lat, long, species_ncbi, Country)) |>
   st_as_sf(coords = c("long", "lat"), crs =4326) 
 names(data_df_loc_filter)[6] <- "species"
-st_write(data_df_loc_filter, "study_df_new.geojson", driver="GeoJSON", append = TRUE)
+st_write(data_df_loc_filter, "study_df_1306.geojson", driver="GeoJSON", append = TRUE)
 
 ###################################################################################
 library(jsonlite)
 
 # Read your geojson file
-geojson_data <- readLines("./docs/study_df_new.geojson") |> paste(collapse = "\n")
+geojson_data <- readLines("./docs/study_df_1306.geojson") |> paste(collapse = "\n")
 
 # Inject it into the HTML template
 html_content <- sprintf('

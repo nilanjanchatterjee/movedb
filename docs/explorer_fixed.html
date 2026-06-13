@@ -370,10 +370,10 @@
 <nav class="topbar">
   <a href="index.html" class="topbar-brand">
     <span class="dot"></span>
-    BIOMAP
+    HOME
   </a>
   <div class="topbar-divider"></div>
-  <span class="topbar-title">Spatial Explorer</span>
+  <span class="topbar-title">Telemetry Data Explorer</span>
   <div class="topbar-right">
     <span class="chip active" id="liveChip" onclick="toggleLive()">● live filter</span>
     <span class="chip chip-danger" id="clearTopBtn" onclick="clearAll()" style="display:none">clear all</span>
@@ -406,8 +406,8 @@
           <div class="stat-value orange" id="statSpecies">—</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">locations</div>
-          <div class="stat-value purple" id="statLocations">—</div>
+          <div class="stat-label">countries</div>
+          <div class="stat-value purple" id="statCountries">—</div>
         </div>
       </div>
 
@@ -417,10 +417,10 @@
         <input type="text" id="speciesSearch" placeholder="Search species…" oninput="onLiveInput()">
       </div>
 
-      <!-- LOCATION -->
+      <!-- Country -->
       <div class="filter-section">
-        <div class="filter-label">Location</div>
-        <input type="text" id="locationSearch" placeholder="Search location…" oninput="onLiveInput()">
+        <div class="filter-label">Country</div>
+        <input type="text" id="countrySearch" placeholder="Search country…" oninput="onLiveInput()">
       </div>
 
       <!-- YEAR RANGE -->
@@ -489,7 +489,7 @@
 
 <script>
 /* ── CONFIGURATION ── */
-const GEOJSON_FILE = 'study_df_new.geojson';
+const GEOJSON_FILE = 'study_df_1306.geojson';
 
 /* ── STATE ──
    FIX 4: declare mapLayer here so updateMap can reference it */
@@ -622,7 +622,7 @@ function applyFilters() {
   if (!geoData || !geoData.features) return;
 
   const speciesQ  = (document.getElementById('speciesSearch').value  || '').toLowerCase().trim();
-  const locationQ = (document.getElementById('locationSearch').value || '').toLowerCase().trim();
+  const countryQ = (document.getElementById('countrySearch').value || '').toLowerCase().trim();
   const titleQ    = (document.getElementById('titleSearch').value    || '').toLowerCase().trim();
   const sampleMin = document.getElementById('sampleMin').value ? +document.getElementById('sampleMin').value : null;
   const sampleMax = document.getElementById('sampleMax').value ? +document.getElementById('sampleMax').value : null;
@@ -636,7 +636,7 @@ function applyFilters() {
 
     /* FIX 5: use lowercase 'species' — matches actual GeoJSON property key */
     const matchSpecies  = !speciesQ  || (p['species']  || '').toLowerCase().includes(speciesQ);
-    const matchLocation = !locationQ || (p['Location'] || '').toLowerCase().includes(locationQ);
+    const matchCountry = !countryQ || (p['Country'] || '').toLowerCase().includes(countryQ);
     const matchTitle    = !titleQ    || (p['Title']    || '').toLowerCase().includes(titleQ);
 
     const year = Number(p['Publication Year']);
@@ -646,7 +646,7 @@ function applyFilters() {
     const matchSample = (sampleMin === null || n >= sampleMin) &&
                         (sampleMax === null || n <= sampleMax);
 
-    return matchSpecies && matchLocation && matchTitle && matchYear && matchSample;
+    return matchSpecies && matchCountry && matchTitle && matchYear && matchSample;
   });
 
   updateMap(filteredFeatures);
@@ -654,7 +654,7 @@ function applyFilters() {
   /* FIX 6: correct argument order — (all, filtered) */
   updateStats(geoData.features, filteredFeatures);
 
-  const hasFilters = speciesQ || locationQ || titleQ ||
+  const hasFilters = speciesQ || countryQ || titleQ ||
     document.getElementById('yearMin').value || document.getElementById('yearMax').value ||
     document.getElementById('sampleMin').value || document.getElementById('sampleMax').value;
   document.getElementById('clearTopBtn').style.display = hasFilters ? 'inline-flex' : 'none';
@@ -702,7 +702,7 @@ function updateMap(features) {
             📅 ${p['Publication Year'] ? Math.round(p['Publication Year']) : '—'}
           </span>
           ${p['Sample Size'] ? `<span style="font-family:'DM Mono',monospace;font-size:11px;color:#f0883e;">n = ${p['Sample Size']}</span>` : ''}
-          ${p['Location']    ? `<span style="font-family:'DM Mono',monospace;font-size:11px;color:#bc8cff;">📍 ${p['Location']}</span>` : ''}
+          ${p['Country']    ? `<span style="font-family:'DM Mono',monospace;font-size:11px;color:#bc8cff;">📍 ${p['Country']}</span>` : ''}
         </div>
         ${doi}
       `, { maxWidth: 280 });
@@ -720,14 +720,14 @@ function updateStats(all, filtered) {
   document.getElementById('statShowing').textContent  = filtered.length.toLocaleString();
   document.getElementById('statSpecies').textContent  =
     new Set(filtered.map(f => f.properties['species']).filter(Boolean)).size.toLocaleString();
-  document.getElementById('statLocations').textContent =
-    new Set(filtered.map(f => f.properties['Location']).filter(Boolean)).size.toLocaleString();
+  document.getElementById('statCountries').textContent =
+    new Set(filtered.map(f => f.properties['Country']).filter(Boolean)).size.toLocaleString();
   document.getElementById('resultCount').textContent  = filtered.length.toLocaleString();
 }
 
 /* ── CLEAR ── */
 function clearAll() {
-  ['speciesSearch','locationSearch','titleSearch','yearMin','yearMax','sampleMin','sampleMax']
+  ['speciesSearch','countrySearch','titleSearch','yearMin','yearMax','sampleMin','sampleMax']
     .forEach(id => document.getElementById(id).value = '');
   if (geoData) initRangeSliders();
   document.getElementById('sampleBadge').textContent = 'all';
